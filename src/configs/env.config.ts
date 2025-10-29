@@ -20,16 +20,15 @@ class EnvConfig {
 
     static validate() {
 
-        if (!fs.existsSync(".env")) {
-            throw new Error(".env file is missing. Please create a .env file at the root directory out of the env.example file.");
-        }
+        // En entornos como Railway/Render, las variables llegan por process.env
+        // y no existe archivo físico .env. No forzar su existencia.
 
         // Variables obligatorias para el funcionamiento básico
         if (!this.GEMINI_API_KEY) {
             throw new Error("Environment variable GEMINI_API_KEY is missing. Please provide a valid Gemini API key.");
         }
         if (!this.PUPPETEER_EXECUTABLE_PATH) {
-            throw new Error("Environment variable PUPPETEER_EXECUTABLE_PATH is missing. Please provide a valid Chrome path.");
+            logger.warn("PUPPETEER_EXECUTABLE_PATH is not set. Using Puppeteer's default executable path.");
         }
         if (!this.ENV) {
             throw new Error("Environment variable ENV is missing. Please provide a valid ENV.");
