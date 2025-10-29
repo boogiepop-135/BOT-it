@@ -15,7 +15,8 @@ async function build() {
 		external: [
 			'bcrypt',
 			'@ffmpeg-installer/ffmpeg',
-			'puppeteer'
+			'puppeteer',
+			'langdetect'
 		],
 	});
 }
