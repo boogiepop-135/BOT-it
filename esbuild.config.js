@@ -11,7 +11,12 @@ async function build() {
 		sourcemap: false,
 		format: 'cjs',
 		logLevel: 'info',
-		external: [],
+		// No empaquetar módulos nativos para que se resuelvan desde node_modules en runtime (linux)
+		external: [
+			'bcrypt',
+			'@ffmpeg-installer/ffmpeg',
+			'puppeteer'
+		],
 	});
 }
 
