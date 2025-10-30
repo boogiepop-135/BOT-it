@@ -42,6 +42,36 @@ router.post('/projects/:projectId/tasks', authenticate, authorizePermission('tas
     }
 });
 
+router.put('/projects/:projectId/tasks/:taskId', authenticate, authorizePermission('tasks','write'), async (req, res) => {
+    try {
+        const task = await Task.findByIdAndUpdate(
+            req.params.taskId,
+            { ...req.body, projectId: req.params.projectId },
+            { new: true, runValidators: true }
+        ).lean().exec();
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+        res.json(task);
+    } catch (e:any) {
+        logger.error('Update task failed', e);
+        res.status(400).json({ error: e.message });
+    }
+});
+
+router.delete('/projects/:projectId/tasks/:taskId', authenticate, authorizePermission('tasks','write'), async (req, res) => {
+    try {
+        const task = await Task.findByIdAndDelete(req.params.taskId).lean().exec();
+        if (!task) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+        res.json({ success: true, message: 'Task deleted' });
+    } catch (e:any) {
+        logger.error('Delete task failed', e);
+        res.status(400).json({ error: e.message });
+    }
+});
+
 export default router;
 
 
