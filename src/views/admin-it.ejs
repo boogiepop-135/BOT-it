@@ -7,6 +7,8 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/frappe-gantt/dist/frappe-gantt.css">
+  <script src="https://unpkg.com/frappe-gantt/dist/frappe-gantt.umd.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -47,6 +49,82 @@
         return _fetch(input, init);
       };
     })();
+  </script>
+  <script>
+    // --- Gantt Logic ---
+    const projectSelect = document.getElementById('projectSelect');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const taskForm = document.getElementById('taskForm');
+    const taskMsg = document.getElementById('taskMsg');
+    let gantt = null;
+
+    async function fetchJSON(url, options={}) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function loadProjects() {
+      const projects = await fetchJSON('/crm/projects');
+      projectSelect.innerHTML = '';
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p._id; opt.textContent = p.name;
+        projectSelect.appendChild(opt);
+      });
+      if (projects.length) await renderGantt(projects[0]._id);
+    }
+
+    function toDateOnly(d){
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth()+1).padStart(2,'0');
+      const da = String(dt.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
+    }
+
+    async function renderGantt(projectId){
+      const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`);
+      const data = tasks.map(t => ({
+        id: t._id,
+        name: t.name,
+        start: toDateOnly(t.startDate || Date.now()),
+        end: toDateOnly(t.endDate || Date.now()),
+        progress: Number(t.progress || 0),
+        dependencies: (t.dependencies||[]).join(',')
+      }));
+      const el = document.getElementById('gantt');
+      el.innerHTML='';
+      gantt = new Gantt(el, data, { view_mode: 'Day', language: 'es' });
+    }
+
+    projectSelect?.addEventListener('change', () => renderGantt(projectSelect.value));
+    reloadBtn?.addEventListener('click', () => renderGantt(projectSelect.value));
+
+    taskForm?.addEventListener('submit', async (e)=>{
+      e.preventDefault(); taskMsg.textContent='';
+      try{
+        const body = {
+          name: document.getElementById('taskName').value.trim(),
+          startDate: document.getElementById('taskStart').value,
+          endDate: document.getElementById('taskEnd').value,
+          progress: Number(document.getElementById('taskProgress').value||0)
+        };
+        if (!body.name) throw new Error('Nombre requerido');
+        await fetchJSON(`/crm/projects/${projectSelect.value}/tasks`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+        });
+        taskForm.reset();
+        await renderGantt(projectSelect.value);
+      }catch(err){
+        taskMsg.textContent = 'Error al crear: ' + (err.message || '');
+      }
+    });
+
+    // init on load
+    loadProjects().catch(()=>{
+      if (projectSelect) projectSelect.innerHTML = '<option>No hay proyectos</option>';
+    });
   </script>
   <!-- Sidebar -->
   <aside class="fixed h-full w-64 bg-white shadow-lg">
@@ -201,17 +279,28 @@
       </div>
     </div>
 
-    <!-- Projects Section -->
-    <div id="projects-section" class="section-content hidden">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Proyectos IT</h2>
-        <button onclick="openNewProjectModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
-          <i class="fas fa-plus mr-2"></i>Nuevo Proyecto
-        </button>
+    <!-- Projects Section (Gantt) -->
+    <div id="projects-section" class="section-content">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Proyectos (Gantt)</h2>
+        <div class="flex items-center gap-3">
+          <select id="projectSelect" class="border rounded px-3 py-2"></select>
+          <button id="reloadBtn" class="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">Recargar</button>
+        </div>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="projects-grid">
-        <!-- Projects will be loaded here -->
+      <div id="ganttContainer" class="bg-white rounded-lg shadow p-4 overflow-x-auto">
+        <svg id="gantt"></svg>
+      </div>
+      <div class="mt-6 bg-white rounded-lg shadow p-4">
+        <h3 class="text-lg font-semibold mb-3">Nueva tarea</h3>
+        <form id="taskForm" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input id="taskName" class="border rounded px-3 py-2" placeholder="Nombre tarea" required />
+          <input id="taskStart" type="date" class="border rounded px-3 py-2" required />
+          <input id="taskEnd" type="date" class="border rounded px-3 py-2" required />
+          <input id="taskProgress" type="number" min="0" max="100" value="0" class="border rounded px-3 py-2" />
+          <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Crear</button>
+        </form>
+        <p id="taskMsg" class="text-sm text-red-600 h-5 mt-2"></p>
       </div>
     </div>
 
