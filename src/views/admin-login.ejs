@@ -1,4 +1,60 @@
 <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - IT</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div class="w-full max-w-sm bg-white p-6 rounded-lg shadow">
+    <h1 class="text-xl font-semibold text-gray-800 mb-4">Iniciar sesión</h1>
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Usuario</label>
+        <input id="username" type="text" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring" required />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Contraseña</label>
+        <input id="password" type="password" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring" required />
+      </div>
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">Entrar</button>
+      <p id="msg" class="text-sm text-red-600 h-5"></p>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const msg = document.getElementById('msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '';
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch('/crm/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Credenciales inválidas' }));
+          msg.textContent = err.error || 'Credenciales inválidas';
+          return;
+        }
+        const data = await res.json();
+        localStorage.setItem('authToken', data.token);
+        location.href = '/admin';
+      } catch (error) {
+        msg.textContent = 'Error de red';
+      }
+    });
+  </script>
+</body>
+</html>
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
