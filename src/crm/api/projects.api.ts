@@ -7,8 +7,10 @@ import logger from '../../configs/logger.config';
 const router = express.Router();
 
 // Projects
+const Project: any = ProjectModel as any;
+const Task: any = TaskModel as any;
 router.get('/projects', authenticate, authorizePermission('projects','read'), async (_req, res) => {
-    const projects = await ProjectModel.find({}).sort({ createdAt: -1 }).exec();
+    const projects = await Project.find({}).sort({ createdAt: -1 }).lean().exec();
     res.json(projects);
 });
 
@@ -25,7 +27,7 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
 
 // Tasks
 router.get('/projects/:projectId/tasks', authenticate, authorizePermission('tasks','read'), async (req, res) => {
-    const tasks = await TaskModel.find({ projectId: req.params.projectId }).sort({ startDate: 1 }).exec();
+    const tasks = await Task.find({ projectId: req.params.projectId }).sort({ startDate: 1 }).lean().exec();
     res.json(tasks);
 });
 
