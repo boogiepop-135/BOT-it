@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate, authorizeRoles } from '../middlewares/auth.middleware';
-import { InventoryCostModel } from '../models/inventory-cost.model';
+import { InventoryCostModel } from '../models/inventoryCost.model';
 import { ROLES } from '../utils/rbac.util';
 
 const router = express.Router();

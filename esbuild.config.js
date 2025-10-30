@@ -11,6 +11,7 @@ async function build() {
 		sourcemap: false,
 		format: 'cjs',
 		logLevel: 'info',
+		resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
 		// No empaquetar módulos nativos para que se resuelvan desde node_modules en runtime (linux)
 		external: [
 			'bcrypt',
