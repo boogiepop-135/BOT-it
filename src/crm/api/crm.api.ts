@@ -6,6 +6,9 @@ import { CampaignModel } from '../models/campaign.model';
 import { ContactModel } from '../models/contact.model';
 import { PaymentReminderModel } from '../models/payment-reminder.model';
 import { AuthService } from '../utils/auth.util';
+import projectsApi from './projects.api';
+import rhApi from './rh.api';
+import financeApi from './finance.api';
 import { TemplateModel } from '../models/template.model';
 
 export const router = express.Router();
@@ -314,6 +317,39 @@ export default function (botManager: BotManager) {
         res.json({ user: req.user });
     });
 
+    // Debug endpoint para verificar usuarios en MongoDB
+    router.get('/auth/debug-users', async (req, res) => {
+        try {
+            const mongoose = require('mongoose');
+            const db = mongoose.connection.db;
+            const dbName = mongoose.connection.name;
+            
+            // Intentar obtener usuarios del modelo
+            const UserModel = require('../models/user.model').UserModel;
+            const modelUsers = await UserModel.find({}).lean();
+            
+            // Intentar obtener usuarios directamente de la colección
+            let collectionUsers: any[] = [];
+            if (db) {
+                try {
+                    collectionUsers = await db.collection('users').find({}).toArray();
+                } catch (e) {
+                    logger.error('Error reading users collection:', e);
+                }
+            }
+            
+            res.json({
+                dbName,
+                modelUsers: modelUsers.map(u => ({ _id: u._id, username: u.username, role: u.role })),
+                collectionUsers: collectionUsers.map(u => ({ _id: u._id, username: u.username, role: u.role })),
+                collections: db ? await db.listCollections().toArray().then((cols: any[]) => cols.map(c => c.name)) : []
+            });
+        } catch (error: any) {
+            logger.error('Debug users error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // Send message route
     router.post('/send-message', authenticate, authorizeAdmin, async (req, res) => {
         try {
@@ -411,6 +447,11 @@ export default function (botManager: BotManager) {
             res.status(500).json({ error: 'Failed to delete payment reminder' });
         }
     });
+
+  // Sub-routers CRM
+  router.use('/', projectsApi);
+  router.use('/rh', rhApi);
+  router.use('/finance', financeApi);
 
     return router;
 }
