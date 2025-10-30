@@ -33,20 +33,38 @@
 </head>
 <body class="bg-gray-50">
   <script>
+    // API Base URL Configuration
+    const API_BASE_URL = 'https://bot-it-production.up.railway.app';
+    
+    // Helper para construir URLs de API
+    function apiUrl(path) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      if (path.startsWith('/')) {
+        return API_BASE_URL + path;
+      }
+      return API_BASE_URL + '/' + path;
+    }
+
     // Guard: requerir token para acceder al panel
     (function(){
       const token = localStorage.getItem('authToken');
       if (!token) {
         window.location.replace('/admin/login');
       }
-      // Interceptor fetch para adjuntar Authorization por defecto
+      // Interceptor fetch para adjuntar Authorization por defecto y normalizar URLs
       const _fetch = window.fetch;
       window.fetch = (input, init = {}) => {
         init.headers = init.headers || {};
         if (!String(input).includes('/crm/auth/login')) {
           init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
         }
-        return _fetch(input, init);
+        // Normalizar URL si es relativa
+        const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
+          ? apiUrl(input) 
+          : input;
+        return _fetch(url, init);
       };
     })();
   </script>

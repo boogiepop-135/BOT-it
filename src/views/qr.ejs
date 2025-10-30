@@ -18,8 +18,16 @@
             <% } %>
         </div>
         <script>
+            // API Base URL Configuration
+            const API_BASE_URL = 'https://bot-it-production.up.railway.app';
+            function apiUrl(path) {
+              if (path.startsWith('http://') || path.startsWith('https://')) return path;
+              if (path.startsWith('/')) return API_BASE_URL + path;
+              return API_BASE_URL + '/' + path;
+            }
+            
             const checkQrStatus = () => {
-                fetch('/qr-status')
+                fetch(apiUrl('/qr-status'))
                     .then(response => response.json())
                     .then(data => {
                         if (!data.qrScanned) {

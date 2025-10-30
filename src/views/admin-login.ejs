@@ -24,6 +24,20 @@
   </div>
 
   <script>
+    // API Base URL Configuration
+    const API_BASE_URL = 'https://bot-it-production.up.railway.app';
+    
+    // Helper para construir URLs de API
+    function apiUrl(path) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      if (path.startsWith('/')) {
+        return API_BASE_URL + path;
+      }
+      return API_BASE_URL + '/' + path;
+    }
+
     const form = document.getElementById('loginForm');
     const msg = document.getElementById('msg');
 
@@ -33,7 +47,7 @@
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       try {
-        const res = await fetch('/crm/auth/login', {
+        const res = await fetch(apiUrl('/crm/auth/login'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -130,6 +144,20 @@
   </div>
 
   <script>
+    // API Base URL Configuration (segundo formulario)
+    const API_BASE_URL_2 = 'https://bot-it-production.up.railway.app';
+    
+    // Helper para construir URLs de API
+    function apiUrl2(path) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      if (path.startsWith('/')) {
+        return API_BASE_URL_2 + path;
+      }
+      return API_BASE_URL_2 + '/' + path;
+    }
+
     document.getElementById('login-form').addEventListener('submit', async function (e) {
       e.preventDefault();
 
@@ -138,7 +166,7 @@
       const errorElement = document.getElementById('error-message');
 
       try {
-        const response = await fetch('/crm/auth/login', {
+        const response = await fetch(apiUrl2('/crm/auth/login'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })

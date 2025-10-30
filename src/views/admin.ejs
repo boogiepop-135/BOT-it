@@ -529,6 +529,29 @@
 
   <script src="/public/js/admin.js"></script>
   <script>
+    // API Base URL Configuration
+    const API_BASE_URL = 'https://bot-it-production.up.railway.app';
+    
+    // Helper para construir URLs de API
+    function apiUrl(path) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      if (path.startsWith('/')) {
+        return API_BASE_URL + path;
+      }
+      return API_BASE_URL + '/' + path;
+    }
+
+    // Interceptor fetch para normalizar URLs automáticamente
+    const _fetch = window.fetch;
+    window.fetch = (input, init = {}) => {
+      const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
+        ? apiUrl(input) 
+        : input;
+      return _fetch(url, init);
+    };
+
     // WhatsApp preview functions
     function updateWhatsAppPreview() {
       const message = document.getElementById('campaign-message').value;
