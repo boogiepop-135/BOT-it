@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
 import { BotManager } from '../../bot.manager';
 import logger from '../../configs/logger.config';
 import { authenticate, authorizeAdmin } from '../middlewares/auth.middleware';
@@ -340,12 +341,52 @@ export default function (botManager: BotManager) {
             
             res.json({
                 dbName,
-                modelUsers: modelUsers.map(u => ({ _id: u._id, username: u.username, role: u.role })),
-                collectionUsers: collectionUsers.map(u => ({ _id: u._id, username: u.username, role: u.role })),
+                modelUsers: modelUsers.map(u => ({ 
+                    _id: u._id, 
+                    username: u.username, 
+                    role: u.role,
+                    hasPassword: !!u.password,
+                    passwordHashStart: u.password ? u.password.substring(0, 20) : null,
+                    passwordHashFormat: u.password ? (u.password.startsWith('$2b$') ? 'bcrypt' : 'unknown') : null
+                })),
+                collectionUsers: collectionUsers.map(u => ({ 
+                    _id: u._id, 
+                    username: u.username, 
+                    role: u.role,
+                    hasPassword: !!u.password,
+                    passwordHashStart: u.password ? u.password.substring(0, 20) : null
+                })),
                 collections: db ? await db.listCollections().toArray().then((cols: any[]) => cols.map(c => c.name)) : []
             });
         } catch (error: any) {
             logger.error('Debug users error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Endpoint para resetear contraseña de un usuario (solo para debug/admin)
+    router.post('/auth/reset-password', async (req, res) => {
+        try {
+            const { username, newPassword } = req.body;
+            if (!username || !newPassword) {
+                return res.status(400).json({ error: 'Username and newPassword are required' });
+            }
+
+            const UserModel = require('../models/user.model').UserModel;
+            const user = await UserModel.findOne({ username });
+            
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            user.password = hashedPassword;
+            await user.save();
+
+            logger.info(`Password reset for user: ${username}`);
+            res.json({ success: true, message: 'Password reset successfully' });
+        } catch (error: any) {
+            logger.error('Password reset error:', error);
             res.status(500).json({ error: error.message });
         }
     });

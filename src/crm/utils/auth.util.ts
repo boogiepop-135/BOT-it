@@ -39,10 +39,25 @@ export class AuthService {
       }
 
       logger.info(`User found: ${user.username}, comparing password...`);
+      logger.info(`Password hash exists: ${!!user.password}, hash length: ${user.password?.length || 0}`);
+      logger.info(`Password starts with $2b$: ${user.password?.startsWith('$2b$') || false}`);
+      
       const isMatch = await bcrypt.compare(password, user.password);
       
+      logger.info(`Password comparison result: ${isMatch}`);
+      
       if (!isMatch) {
+        // Intentar comparar con trim por si hay espacios
+        const trimmedPassword = password.trim();
+        const trimmedMatch = trimmedPassword !== password && await bcrypt.compare(trimmedPassword, user.password);
+        
+        if (trimmedMatch) {
+          logger.info(`Password matched after trimming whitespace`);
+          return { token: jwt.sign({ userId: user._id, role: user.role }, EnvConfig.JWT_SECRET, { expiresIn: '1d' }), user };
+        }
+        
         logger.warn(`Password mismatch for user: ${username}`);
+        logger.warn(`Expected hash format: $2b$10$..., Actual: ${user.password?.substring(0, 20)}...`);
         throw new Error('Invalid credentials');
       }
 
