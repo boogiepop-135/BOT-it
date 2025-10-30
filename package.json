@@ -32,8 +32,10 @@
         "whatsapp-web.js": "^1.27.0",
         "winston": "^3.13.0",
         "wwebjs-mongo": "^1.1.0",
-        "yt-dlp-wrap": "^2.3.12"
+        "yt-dlp-wrap": "^2.3.12",
+        "undici": "^6.19.8"
     },
+    "overrides": {},
     "scripts": {
         "start": "node build/index.js",
         "dev": "nodemon src/index.ts",
