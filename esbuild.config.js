@@ -16,7 +16,8 @@ async function build() {
 			'bcrypt',
 			'@ffmpeg-installer/ffmpeg',
 			'puppeteer',
-			'langdetect'
+			'langdetect',
+			'undici/register'
 		],
 	});
 }
