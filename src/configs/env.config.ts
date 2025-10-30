@@ -15,7 +15,7 @@ class EnvConfig {
     static ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
     static ENV = process.env.ENV;
     static PORT = process.env.PORT;
-    static MONGODB_URI = process.env.MONGODB_URI;
+    static MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URL || process.env.MONGO_PUBLIC_URL;
     static JWT_SECRET = process.env.JWT_SECRET;
 
     static validate() {
