@@ -1,3 +1,13 @@
+FROM node:18-bullseye-slim AS build
+
+WORKDIR /app
+COPY package*.json ./
+# Instalar dependencias completas (incluye dev) para poder construir
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Runtime
 FROM node:18-bullseye-slim
 
 # Dependencias del SO para Puppeteer/Chromium + ffmpeg
@@ -15,9 +25,12 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 COPY package*.json ./
+# Instalar solo dependencias de producción para un contenedor más liviano
 RUN npm ci --omit=dev
-COPY . .
-RUN npm run build
+
+# Copiar artefactos construidos
+COPY --from=build /app/build ./build
+COPY --from=build /app/public ./public
 
 EXPOSE 3000
 CMD ["node","build/index.js"]
