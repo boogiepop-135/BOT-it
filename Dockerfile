@@ -3,7 +3,7 @@ FROM node:18-bullseye-slim AS build
 WORKDIR /app
 COPY package*.json ./
 # Instalar dependencias completas (incluye dev) para poder construir
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -26,7 +26,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 WORKDIR /app
 COPY package*.json ./
 # Instalar solo dependencias de producción para un contenedor más liviano
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copiar artefactos construidos
 COPY --from=build /app/build ./build
