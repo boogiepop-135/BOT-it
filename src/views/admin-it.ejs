@@ -54,6 +54,9 @@
     // --- Gantt Logic ---
     const projectSelect = document.getElementById('projectSelect');
     const reloadBtn = document.getElementById('reloadBtn');
+    const viewMode = document.getElementById('viewMode');
+    const projectForm = document.getElementById('projectForm');
+    const projMsg = document.getElementById('projMsg');
     const taskForm = document.getElementById('taskForm');
     const taskMsg = document.getElementById('taskMsg');
     let gantt = null;
@@ -95,11 +98,13 @@
       }));
       const el = document.getElementById('gantt');
       el.innerHTML='';
-      gantt = new Gantt(el, data, { view_mode: 'Day', language: 'es' });
+      const mode = viewMode?.value || 'Day';
+      gantt = new Gantt(el, data, { view_mode: mode, language: 'es' });
     }
 
     projectSelect?.addEventListener('change', () => renderGantt(projectSelect.value));
     reloadBtn?.addEventListener('click', () => renderGantt(projectSelect.value));
+    viewMode?.addEventListener('change', () => gantt?.change_view_mode(viewMode.value));
 
     taskForm?.addEventListener('submit', async (e)=>{
       e.preventDefault(); taskMsg.textContent='';
@@ -124,6 +129,22 @@
     // init on load
     loadProjects().catch(()=>{
       if (projectSelect) projectSelect.innerHTML = '<option>No hay proyectos</option>';
+    });
+
+    projectForm?.addEventListener('submit', async (e)=>{
+      e.preventDefault(); projMsg.textContent='';
+      try{
+        const body = {
+          name: document.getElementById('projName').value.trim(),
+          status: 'planned',
+          startDate: document.getElementById('projStart').value || undefined,
+          endDate: document.getElementById('projEnd').value || undefined
+        };
+        if (!body.name) throw new Error('Nombre requerido');
+        await fetchJSON('/crm/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        projectForm.reset();
+        await loadProjects();
+      }catch(err){ projMsg.textContent = 'Error al crear proyecto: ' + (err.message||''); }
     });
   </script>
   <!-- Sidebar -->
@@ -285,6 +306,11 @@
         <h2 class="text-2xl font-bold text-gray-800">Proyectos (Gantt)</h2>
         <div class="flex items-center gap-3">
           <select id="projectSelect" class="border rounded px-3 py-2"></select>
+          <select id="viewMode" class="border rounded px-3 py-2">
+            <option value="Day">Día</option>
+            <option value="Week">Semana</option>
+            <option value="Month">Mes</option>
+          </select>
           <button id="reloadBtn" class="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">Recargar</button>
         </div>
       </div>
@@ -301,6 +327,17 @@
           <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Crear</button>
         </form>
         <p id="taskMsg" class="text-sm text-red-600 h-5 mt-2"></p>
+      </div>
+
+      <div class="mt-6 bg-white rounded-lg shadow p-4">
+        <h3 class="text-lg font-semibold mb-3">Nuevo proyecto</h3>
+        <form id="projectForm" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <input id="projName" class="border rounded px-3 py-2" placeholder="Nombre del proyecto" required />
+          <input id="projStart" type="date" class="border rounded px-3 py-2" />
+          <input id="projEnd" type="date" class="border rounded px-3 py-2" />
+          <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded">Crear proyecto</button>
+        </form>
+        <p id="projMsg" class="text-sm text-red-600 h-5 mt-2"></p>
       </div>
     </div>
 
