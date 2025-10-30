@@ -48,7 +48,7 @@
         "clean": "rimraf build",
         "clean:all": "rimraf build && rimraf node_modules",
         "prepare": "husky install",
-        "copy-files": "copyfiles -u 0 ./package.json ./.env ./package-lock.json public/**/* build"
+        "copy-files": "copyfiles -u 0 ./package.json ./.env ./package-lock.json public/**/* build && copyfiles -u 1 src/views/**/* build/views"
     },
     "repository": {
         "type": "git",
