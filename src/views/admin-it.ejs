@@ -85,7 +85,7 @@
       return res.json();
     }
 
-    async function loadProjects() {
+    async function loadProjectsForGantt() {
       const projects = await fetchJSON('/crm/projects');
       projectSelect.innerHTML = '';
       projects.forEach(p => {
@@ -214,7 +214,7 @@
     });
 
     // init on load
-    loadProjects().catch(()=>{
+    loadProjectsForGantt().catch(()=>{
       if (projectSelect) projectSelect.innerHTML = '<option>No hay proyectos</option>';
     });
 
@@ -230,7 +230,7 @@
         if (!body.name) throw new Error('Nombre requerido');
         await fetchJSON('/crm/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         projectForm.reset();
-        await loadProjects();
+        await loadProjectsForGantt();
       }catch(err){ projMsg.textContent = 'Error al crear proyecto: ' + (err.message||''); }
     });
 
@@ -327,12 +327,35 @@
     </div>
     
     <nav class="p-4 space-y-1">
-      <!-- Solo Proyectos para IT -->
+      <!-- Navegación completa para IT -->
+      <a href="#" data-section="dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition active">
+        <i class="fas fa-tachometer-alt w-5"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="#" data-section="tickets" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-ticket-alt w-5"></i>
+        <span>Tickets</span>
+      </a>
       <a href="#" data-section="projects" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
         <i class="fas fa-project-diagram w-5"></i>
         <span>Proyectos</span>
       </a>
-      <!-- Fin solo Proyectos -->
+      <a href="#" data-section="groups" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-users w-5"></i>
+        <span>Grupos</span>
+      </a>
+      <a href="#" data-section="users" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-user-friends w-5"></i>
+        <span>Usuarios</span>
+      </a>
+      <a href="#" data-section="reminders" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-bell w-5"></i>
+        <span>Recordatorios</span>
+      </a>
+      <a href="#" data-section="reports" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-chart-bar w-5"></i>
+        <span>Reportes</span>
+      </a>
     </nav>
     
     <div class="absolute bottom-0 w-full p-4 border-t bg-white">
@@ -356,7 +379,87 @@
 
   <!-- Main Content -->
   <main class="ml-64 p-6">
-    <!-- Solo sección Proyectos activa -->
+    <!-- Dashboard Section -->
+    <div id="dashboard-section" class="section-content">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Dashboard IT</h2>
+        <p class="text-gray-600">Vista general del sistema</p>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Total Tickets</p>
+              <p id="stat-total-tickets" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <i class="fas fa-ticket-alt text-blue-600"></i>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Tickets Abiertos</p>
+              <p id="stat-open-tickets" class="text-3xl font-bold text-orange-600">0</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+              <i class="fas fa-exclamation-circle text-orange-600"></i>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Proyectos Activos</p>
+              <p id="stat-active-projects" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+              <i class="fas fa-project-diagram text-green-600"></i>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600">Tiempo Promedio</p>
+              <p id="stat-avg-resolution" class="text-3xl font-bold text-purple-600">0h</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+              <i class="fas fa-clock text-purple-600"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold mb-4">Tickets por Categoría</h3>
+          <canvas id="categoryChart"></canvas>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold mb-4">Tickets por Estado</h3>
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Recent Tickets -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b">
+          <h3 class="text-lg font-semibold">Tickets Recientes</h3>
+        </div>
+        <div id="recent-tickets" class="p-6">
+          <!-- Tickets will be loaded here -->
+        </div>
+      </div>
+    </div>
 
     <!-- Groups Section -->
     <div id="groups-section" class="section-content hidden">
@@ -466,7 +569,7 @@
     </div>
 
     <!-- Projects Section (Gantt) -->
-    <div id="projects-section" class="section-content">
+    <div id="projects-section" class="section-content hidden">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Proyectos (Gantt)</h2>
         <div class="flex items-center gap-3">
@@ -925,7 +1028,10 @@
       document.getElementById(section + '-section').classList.remove('hidden');
       if (section === 'dashboard') loadDashboard();
       if (section === 'tickets') loadTickets();
-      if (section === 'projects') loadProjects();
+      if (section === 'projects') {
+        loadProjects(); // Cargar proyectos en cards
+        loadProjectsForGantt(); // Cargar proyectos en Gantt
+      }
       if (section === 'users') {
         loadUsers();
         // Ensure event listeners are attached after loading users
