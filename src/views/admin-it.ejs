@@ -889,7 +889,7 @@
 
   <script>
     // Check authentication
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (!token) {
       window.location.href = '/admin/login';
     }
@@ -902,7 +902,7 @@
     function handleAuthError(response) {
       if (response.status === 401) {
         alert('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
         window.location.href = '/admin/login';
         return true;
       }
@@ -2256,7 +2256,7 @@
     const logoutBtn = document.getElementById('logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', function () {
-        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
         window.location.href = '/admin/login';
       });
     }
