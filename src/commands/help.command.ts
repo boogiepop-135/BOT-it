@@ -37,7 +37,7 @@ export const run = (message: Message, args: string[] = null, userI18n: UserI18n)
     }
 
     if (content) {
-        message.reply(`> Müllblue 🌱 ${content}`);
+        message.reply(`> San Cosme IT 🤖 ${content}`);
         return;
     }
 };

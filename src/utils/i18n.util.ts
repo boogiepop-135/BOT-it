@@ -3,7 +3,7 @@ import { COUNTRIES, CountryConfig } from "./countries.util";
 export const TRANSLATIONS = {
     es: {
         unknownCommand: "Comando desconocido: {command}, para ver comandos disponibles, escribe {prefix}help",
-        errorOccurred: "Error comunicándose con Mullbot. Por favor intenta de nuevo o contacta a nuestro equipo de soporte.",
+        errorOccurred: "Error comunicándose con WhatsBot IT. Por favor intenta de nuevo o contacta a nuestro equipo de soporte.",
         botReady: "¡Listo!",
 
         commands: {
@@ -16,7 +16,7 @@ export const TRANSLATIONS = {
                 example: "help ping"
             },
             ping: {
-                description: "Verificar si Mullbot está funcionando",
+                description: "Verificar si WhatsBot IT está funcionando",
                 example: "ping"
             },
             langlist: {
@@ -28,7 +28,7 @@ export const TRANSLATIONS = {
                 example: "translate fr ¡Hola chicos!"
             },
             chat: {
-                description: "Chatear con el agente de ventas de Müllblue",
+                description: "Chatear con el agente de ventas de San Cosme IT",
                 example: "chat Hola, quiero más información"
             },
             meme: {
@@ -88,9 +88,9 @@ export const TRANSLATIONS = {
             caption: "Descarga tus videos de TikTok, Instagram, Twitter, Facebook, LinkedIn en WhatsApp sin marca de agua. Solo envía el enlace del video a este bot",
             captions: [
                 "Descarga tus videos de TikTok, Instagram, Twitter, Facebook y LinkedIn en WhatsApp sin marca de agua. Simplemente envía el enlace del video a este bot",
-                "¿Aún no has guardado Mullbot en tu lista de contactos? ¡Hazlo rápido y ahora! De lo contrario, no podrás usar el bot en el futuro",
+                "¿Aún no has guardado WhatsBot IT en tu lista de contactos? ¡Hazlo rápido y ahora! De lo contrario, no podrás usar el bot en el futuro",
                 "Imagina un bot que te permite descargar tus videos de TikTok, Instagram, Twitter, Facebook y LinkedIn en WhatsApp sin marca de agua. Simplemente envía el enlace del video a este bot",
-                "Probablemente no conoces algunas funciones de Mullbot. Escribe {prefix}help para ver qué puede hacer Mullbot"
+                "Probablemente no conoces algunas funciones de WhatsBot IT. Escribe {prefix}help para ver qué puede hacer WhatsBot IT"
             ],
         },
 
@@ -162,9 +162,9 @@ export const TRANSLATIONS = {
             caption: "Téléchargez vos vidéos TikTok, Instagram, Twitter, Facebook, LinkedIn sur WhatsApp sans filigrane. Envoyez simplement le lien de la vidéo à ce bot https://wa.me/qr/SBHRATABRAZVA1",
             captions: [
                 "Téléchargez vos vidéos TikTok, Instagram, Twitter, Facebook, LinkedIn sur WhatsApp sans filigrane. Envoyez simplement le lien de la vidéo à ce bot https://wa.me/qr/SBHRATABRAZVA1",
-                "Vous n'avez toujours pas enregistré Müllblue Bot dans votre liste de contacts? Faites le vite et maintenant ! Sinon vous ne pourrez pas utiliser le bot à l'avenir !",
+                "Vous n'avez toujours pas enregistré WhatsBot IT dans votre liste de contacts? Faites le vite et maintenant ! Sinon vous ne pourrez pas utiliser le bot à l'avenir !",
                 "Imaginez un bot qui vous permet de télécharger vos vidéos TikTok, Instagram, Twitter, Facebook, LinkedIn sans filigrane sur WhatsApp. Envoie simplement le lien de la vidéo à ce bot https://wa.me/qr/SBHRATABRAZVA1",
-                "Vous ignorez certainement quelques fonctionnalités de Müllblue Bot. Tapez {prefix}help pour voir ce que Müllblue Bot peut faire !"
+                "Vous ignorez certainement quelques fonctionnalités de WhatsBot IT. Tapez {prefix}help pour voir ce que WhatsBot IT peut faire !"
             ],
         },
 
@@ -236,9 +236,9 @@ export const TRANSLATIONS = {
             caption: "Download your TikTok, Instagram, Twitter, Facebook, LinkedIn videos on WhatsApp without watermark. Just send the video link to this bot https://wa.me/qr/SBHRATABRAZVA1",
             captions: [
                 "Download your TikTok, Instagram, Twitter, Facebook, and LinkedIn videos to WhatsApp without a watermark. Simply send the video link to this bot https://wa.me/qr/SBHRATABRAZVA1",
-                "Still haven't saved Müllblue Bot to your contact list? Do it quickly and now! Otherwise, you won't be able to use the bot in the future!",
+                "Still haven't saved WhatsBot IT to your contact list? Do it quickly and now! Otherwise, you won't be able to use the bot in the future!",
                 "Imagine a bot that lets you download your TikTok, Instagram, Twitter, Facebook, and LinkedIn videos to WhatsApp without a watermark. Simply send the video link to this bot https://wa.me/qr/SBHRATABRAZVA1",
-                "You probably don't know some of Müllblue Bot's features. Type {prefix}help to see what Müllblue Bot can do!"
+                "You probably don't know some of WhatsBot IT's features. Type {prefix}help to see what WhatsBot IT can do!"
             ],
         },
 

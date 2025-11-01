@@ -6,7 +6,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const chat = await message.getChat();
     
     const contacto = `
-🌱 *CONTACTO MÜLLBLUE*
+🤖 *CONTACTO SAN COSME IT*
 
 *CANALES DE ATENCIÓN* 📱
 
@@ -15,24 +15,24 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
    Asistencia inmediata para ventas
    Soporte técnico especializado
 
-📧 *Email:* mullblue.residuos@gmail.com
+📧 *Email:* contacto@sancosmeit.com
    Consultas detalladas
    Soporte técnico avanzado
    Información corporativa
 
-📘 *Facebook:* Composta fácil con Müllblue
+📘 *Facebook:* San Cosme IT
    Comunidad activa de usuarios
-   Tips y consejos de compostaje
+   Tips y consejos
    Testimonios de clientes
 
-📸 *Instagram:* @mullblue.oficial
-   Contenido visual del proceso
+📸 *Instagram:* @sancosmeit
+   Contenido visual
    Historias de éxito
-   Tips diarios de sostenibilidad
+   Tips diarios
 
 *SERVICIOS DISPONIBLES* 🤖
 
-🤖 *Asistente Virtual Müllblue*
+🤖 *Asistente Virtual San Cosme IT*
    Disponible 24/7 por WhatsApp
    Guía paso a paso del proceso
    Respuestas inmediatas sobre productos

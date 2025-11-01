@@ -11,7 +11,7 @@ export const run = async (message: Message, _args: string[] = null, userI18n: Us
         await message.reply(
             MessageMedia.fromFilePath(AppConfig.instance.getBotAvatar("confused")),
             null,
-            { sendVideoAsGif: true, caption: "> Müllblue Bot 🌱 No se encontró chiste" },
+            { sendVideoAsGif: true, caption: "> San Cosme IT 🌱 No se encontró chiste" },
         );
         return;
     }
@@ -23,12 +23,12 @@ export const run = async (message: Message, _args: string[] = null, userI18n: Us
         const setupJoke = await message.reply(
             media,
             null,
-            { sendVideoAsGif: true, caption: `> Müllblue Bot 🌱 1/2 :\n${jokeData.setup}\n\n...` },
+            { sendVideoAsGif: true, caption: `> San Cosme IT 🌱 1/2 :\n${jokeData.setup}\n\n...` },
         );
 
         if (jokeData.delivery) {
             setTimeout(async () => {
-                await setupJoke.reply(AppConfig.instance.printMessage(`> Müllblue Bot 🌱 2/2 :\n${jokeData.delivery}\n😂😂🤣`));
+                await setupJoke.reply(AppConfig.instance.printMessage(`> San Cosme IT 🌱 2/2 :\n${jokeData.delivery}\n😂😂🤣`));
             }, 5000);
         }
 
@@ -42,7 +42,7 @@ export const run = async (message: Message, _args: string[] = null, userI18n: Us
         await message.reply(
             MessageMedia.fromFilePath(AppConfig.instance.getBotAvatar("confused")),
             null,
-            { sendVideoAsGif: true, caption: "> Müllblue Bot 🌱 Error al obtener chistes" },
+            { sendVideoAsGif: true, caption: "> San Cosme IT 🌱 Error al obtener chistes" },
         );
         return;
     }

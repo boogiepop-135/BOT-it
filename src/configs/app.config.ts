@@ -26,11 +26,11 @@ export class AppConfig {
     }
 
     public getBotName(): string {
-        return "Mullbot";
+        return "WhatsBot IT";
     }
 
     public getBotAuthor(): string {
-        return "Mullbot - Transforma residuos en vida";
+        return "San Cosme IT - Agente de Ventas Inteligente";
     }
 
     public getBotEmoji(): string {

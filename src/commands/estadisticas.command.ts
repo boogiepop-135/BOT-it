@@ -10,7 +10,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const stats = SalesTracker.getSalesStats();
     
     const estadisticas = `
-📊 *ESTADÍSTICAS DE VENTAS MÜLLBLUE*
+📊 *ESTADÍSTICAS DE VENTAS SAN COSME IT*
 
 *RESUMEN GENERAL* 📈
 👥 Usuarios únicos: ${stats.uniqueUsers}

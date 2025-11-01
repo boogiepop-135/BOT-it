@@ -32,7 +32,7 @@ https://mpago.li/1W2JhS5
 
 *CONTACTO POST-PAGO* 📱
 📞 WhatsApp: +52 56 6453 1621
-📧 Email: mullblue.residuos@gmail.com
+📧 Email: contacto@sancosmeit.com
 
 ¿Tienes alguna duda sobre el proceso de pago? ¿Necesitas ayuda con algún paso? 🌱
 `;

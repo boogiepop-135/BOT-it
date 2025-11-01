@@ -11,5 +11,5 @@ export const run = (message: Message, _args: string[] = null, userI18n: UserI18n
         tableLength = index + 1;
     });
 
-    message.reply(`> Müllblue Bot 🌱 Códigos de idiomas disponibles (${tableLength}) - :\n ${table}`);
+    message.reply(`> San Cosme IT 🤖 Códigos de idiomas disponibles (${tableLength}) - :\n ${table}`);
 };

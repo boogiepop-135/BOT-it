@@ -6,7 +6,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const chat = await message.getChat();
     
     const productos = `
-🌱 *COMPOSTERO FERMENTADOR MÜLLBLUE 15L*
+📦 *PRODUCTOS SAN COSME IT*
 
 *PROPUESTA DE VALOR* 💚
 Reduce tus residuos orgánicos hasta 2.5 veces y los fermenta en poco espacio, de forma limpia y sin malos olores, plagas ni escurrimientos, gracias a su biocatalizador natural.

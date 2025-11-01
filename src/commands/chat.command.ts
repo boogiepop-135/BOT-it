@@ -325,7 +325,7 @@ Escribe \`cancel\` para salir.`;
         logger.error(err);
         
         // Manejar errores específicos de APIs de IA
-        let errorMessage = "Error comunicándose con Mullbot. Por favor intenta de nuevo o contacta a nuestro equipo de soporte.";
+        let errorMessage = "Error comunicándose con WhatsBot IT. Por favor intenta de nuevo o contacta a nuestro equipo de soporte.";
         
         if (err.message && (err.message.includes("503 Service Unavailable") || err.message.includes("Todas las APIs de IA están temporalmente no disponibles"))) {
             errorMessage = "Los servicios de IA están temporalmente sobrecargados. Por favor intenta de nuevo en unos minutos. Mientras tanto, puedes usar los comandos específicos:\n\n*Comandos disponibles:*\n💰 *precios* - Información de precios\n💳 *pago* - Métodos de pago\n📦 *productos* - Información del producto\n\n¡Gracias por tu paciencia! 😊";

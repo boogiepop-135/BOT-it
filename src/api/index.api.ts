@@ -7,7 +7,6 @@ import itRouter from "../crm/api/it.api";
 const router = express.Router();
 
 export default function (botManager: BotManager) {
-
     const client = botManager.client;
     const qrData = botManager.qrData;
     

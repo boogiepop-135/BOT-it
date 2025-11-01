@@ -6,7 +6,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const chat = await message.getChat();
     
     const pago = `
-💳 *MÉTODOS DE PAGO MÜLLBLUE*
+💳 *MÉTODOS DE PAGO SAN COSME IT*
 
 *TRANSFERENCIA BANCARIA* 🏦
 🏛️ *Banco:* Banco Azteca
@@ -44,7 +44,7 @@ https://mpago.li/1W2JhS5
 
 *CONTACTO PARA PAGOS* 📱
 📞 WhatsApp: +52 56 6453 1621
-📧 Email: mullblue.residuos@gmail.com
+📧 Email: contacto@sancosmeit.com
 
 ¿Tienes alguna pregunta sobre el proceso de pago? ¿Te gustaría proceder con tu compra? 🌱
 `;

@@ -10,6 +10,8 @@ import { AuthService } from '../utils/auth.util';
 import projectsApi from './projects.api';
 import rhApi from './rh.api';
 import financeApi from './finance.api';
+import feedbackApi from './feedback.api';
+import scheduledReportApi from './scheduled-report.api';
 import { TemplateModel } from '../models/template.model';
 
 export const router = express.Router();
@@ -493,6 +495,8 @@ export default function (botManager: BotManager) {
   router.use('/', projectsApi);
   router.use('/rh', rhApi);
   router.use('/finance', financeApi);
+  router.use('/', feedbackApi);
+  router.use('/', scheduledReportApi);
 
     return router;
 }

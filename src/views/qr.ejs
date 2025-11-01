@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Müllblue Bot - Código QR</title>
+    <title>WhatsBot IT - Código QR</title>
     <link rel="icon" href="/public/favicon.png">
 </head>
 <body>
     <div align="center">
         <div id="qrCodeData">
-            <h3>🌱 Müllblue Bot: ¡Escanea el código QR para continuar!</h3>
+            <h3>🤖 WhatsBot IT: ¡Escanea el código QR para continuar!</h3>
             <% if (qrCodeData) { %>
                 <img src="https://api.qrserver.com/v1/create-qr-code/?data=<%= encodeURIComponent(qrCodeData) %>&size=300x300" alt="QR Code" />
             <% } else { %>

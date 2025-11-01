@@ -14,7 +14,7 @@ export const run = async (message: Message, args: string[] = null, userI18n: Use
     const city = args.join(" ");
 
     if (!city) {
-        message.reply(`> Müllblue Bot 🌱 Por favor especifica una ciudad, por ejemplo: ${AppConfig.instance.getBotPrefix()}meteo Ciudad de México.`);
+        message.reply(`> San Cosme IT 🌱 Por favor especifica una ciudad, por ejemplo: ${AppConfig.instance.getBotPrefix()}meteo Ciudad de México.`);
         return;
     }
 
@@ -27,7 +27,7 @@ export const run = async (message: Message, args: string[] = null, userI18n: Use
             await message.reply(MessageMedia.fromFilePath(weatherImage), null, { caption: AppConfig.instance.printMessage(formattedMessage) });
         } catch (error) {
             logger.error(error);
-            message.reply('> Müllblue Bot 🌱 El servicio del clima no está disponible actualmente. Por favor intenta más tarde.');
+            message.reply('> San Cosme IT 🌱 El servicio del clima no está disponible actualmente. Por favor intenta más tarde.');
         }
     }
 };

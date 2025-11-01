@@ -50,7 +50,7 @@ const tryGemini = async (query: string): Promise<string> => {
         }
     });
     
-    const systemPrompt = `Eres un agente de ventas experto de Müllblue. Responde en español con emojis, sin signos de admiración.
+    const systemPrompt = `Eres un agente de ventas experto de San Cosme IT. Responde en español con emojis, sin signos de admiración.
 
 PRODUCTO: Compostero fermentador 15L - Reduce residuos 2.5x, sin olores, plagas ni escurrimientos.
 
@@ -82,7 +82,7 @@ Siempre pregunta algo para continuar hacia la venta.`;
 };
 
 const tryClaude = async (query: string): Promise<string> => {
-    const systemPrompt = `Eres un agente de ventas experto de Müllblue. Responde en español con emojis, sin signos de admiración.
+    const systemPrompt = `Eres un agente de ventas experto de San Cosme IT. Responde en español con emojis, sin signos de admiración.
 
 PRODUCTO: Compostero fermentador 15L - Reduce residuos 2.5x, sin olores, plagas ni escurrimientos.
 

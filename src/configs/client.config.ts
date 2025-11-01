@@ -1,11 +1,19 @@
-import { LocalAuth } from "whatsapp-web.js";
+import { RemoteAuth } from "whatsapp-web.js";
 import EnvConfig from "./env.config";
+import { getMongoStore } from "./mongo-store.config";
 
-export const ClientConfig = {
-    authStrategy: new LocalAuth({
-        clientId: "mullbot-client",
-        rmMaxRetries: 3
-    }),
+// Crear configuración asíncrona para ClientConfig
+export async function getClientConfig() {
+    const store = await getMongoStore();
+    
+    return {
+        authStrategy: new RemoteAuth({
+            store: store,
+            backupSyncIntervalMs: 300000, // Hacer backup cada 5 minutos
+            clientId: "whatsbot-it-client",
+            dataPath: "./.wwebjs_auth",
+            rmMaxRetries: 3
+        }),
     puppeteer: {
         headless: true,
         executablePath: EnvConfig.PUPPETEER_EXECUTABLE_PATH,
@@ -55,8 +63,9 @@ export const ClientConfig = {
             '--disable-blink-features=AutomationControlled'
         ]
     },
-    restartOnAuthFail: true,
-    takeoverOnConflict: true,
-    takeoverTimeoutMs: 0,
-    qrMaxRetries: 5
+        restartOnAuthFail: true,
+        takeoverOnConflict: true,
+        takeoverTimeoutMs: 0,
+        qrMaxRetries: 5
+    };
 }

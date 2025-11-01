@@ -13,14 +13,26 @@ const app = express();
 const port = EnvConfig.PORT || 3000;
 
 const botManager = BotManager.getInstance();
-connectDB();
-initCrons(botManager);
+
+// Conectar a MongoDB primero, luego inicializar el cliente de WhatsApp
+connectDB().then(async () => {
+    // Inicializar el cliente después de conectar a MongoDB
+    await botManager.initializeClient();
+    initCrons(botManager);
+    botManager.initialize();
+}).catch((error) => {
+    logger.error('Failed to initialize:', error);
+    process.exit(1);
+});
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use("/public", express.static("public"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Make botManager available to routes
+app.locals.botManager = botManager;
 
 // API Routes must come before view routes
 app.use("/", apiRoutes(botManager));
@@ -37,5 +49,5 @@ app.listen(port, () => {
     logger.info(readAsciiArt());
     logger.info(`Server running on port ${port}`);
     logger.info(`Access: http://localhost:${port}/`);
-    botManager.initialize();
+    // botManager.initialize() se llama después de conectar a MongoDB
 });

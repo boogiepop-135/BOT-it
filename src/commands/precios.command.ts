@@ -6,7 +6,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const chat = await message.getChat();
     
     const precios = `
-💰 *PRECIOS MÜLLBLUE - COMPOSTERO FERMENTADOR 15L*
+💰 *PRECIOS SAN COSME IT*
 
 *PRECIO ESPECIAL* 🎯
 💵 *$1,490 MXN* (antes $1,890)

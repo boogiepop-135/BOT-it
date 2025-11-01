@@ -22,12 +22,24 @@ export class BotManager {
     private isPaused: boolean = false;
 
     private constructor() {
-        this.client = new Client(ClientConfig);
-        this.setupEventHandlers();
+        // El cliente se inicializará de forma asíncrona
+        // No podemos crear el cliente aquí porque getClientConfig es asíncrono
+        // Por eso usamos initializeClient() que se llamará después de conectar a MongoDB
+    }
+
+    public async initializeClient() {
+        if (!this.client) {
+            const clientConfig = await getClientConfig();
+            this.client = new Client(clientConfig);
+            this.setupEventHandlers();
+        }
     }
 
     public async listGroups() {
         try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
             const chats = await this.client.getChats();
             const groups = chats.filter((c: any) => c.isGroup);
             return groups.map((g: any) => ({
@@ -43,6 +55,9 @@ export class BotManager {
 
     public async sendMessageToGroupById(groupId: string, message: string) {
         try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
             const chatId = groupId.includes('@g.us') ? groupId : `${groupId}@g.us`;
             await this.client.sendMessage(chatId, message);
             logger.info(`Message sent to group ${chatId}`);
@@ -55,6 +70,9 @@ export class BotManager {
 
     public async sendMessageToGroupByName(groupName: string, message: string) {
         try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
             const chats = await this.client.getChats();
             const group = chats.find((c: any) => c.isGroup && typeof c.name === 'string' && c.name.toLowerCase() === groupName.toLowerCase());
             if (!group) {
@@ -112,8 +130,11 @@ export class BotManager {
         }, 5000);
     }
 
-    public initialize() {
+    public async initialize() {
         try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
             this.client.initialize();
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
@@ -135,8 +156,9 @@ export class BotManager {
             qrScanned: false
         };
         
-        // Create new client
-        this.client = new Client(ClientConfig);
+        // Create new client with async config
+        const clientConfig = await getClientConfig();
+        this.client = new Client(clientConfig);
         this.setupEventHandlers();
         
         // Initialize new client
@@ -151,6 +173,9 @@ export class BotManager {
 
     public async sendMessageToUser(phoneNumber: string, message: string) {
         try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
             // Clean phone number - remove any non-numeric characters except +
             let cleanNumber = phoneNumber.replace(/[^0-9+]/g, '');
             
@@ -248,6 +273,39 @@ export class BotManager {
         if (this.isPaused) {
             logger.info('Bot is paused, ignoring message');
             return;
+        }
+
+        // Verificar horario de atención
+        const isBusinessHours = ScheduleUtil.isBusinessHours();
+        if (!isBusinessHours) {
+            try {
+                let user;
+                try {
+                    user = await message.getContact();
+                } catch (error) {
+                    logger.error('Failed to get contact from message:', error);
+                    return;
+                }
+
+                if (!user || !user.number) {
+                    logger.warn('Message without valid contact information');
+                    return;
+                }
+
+                // Obtener idioma del usuario
+                userI18n = this.getUserI18n(user.number);
+                chat = await message.getChat();
+                
+                // Enviar mensaje de fuera de horario
+                const offHoursMessage = ScheduleUtil.getOffHoursMessage(userI18n.getLanguage());
+                await chat.sendMessage(offHoursMessage);
+                
+                logger.info(`Off-hours message sent to ${user.number}`);
+                return;
+            } catch (error) {
+                logger.error('Error sending off-hours message:', error);
+                // Continuar con el procesamiento normal si hay error
+            }
         }
 
         try {

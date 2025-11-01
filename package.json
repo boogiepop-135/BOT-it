@@ -1,7 +1,7 @@
 {
-    "name": "mullbot",
+    "name": "whatsbot-it",
     "version": "1.0.0",
-    "description": "Mullbot - Chatbot inteligente para compostaje y sostenibilidad",
+    "description": "WhatsBot IT - Agente de Ventas Inteligente para WhatsApp",
     "main": "build/index.js",
     "dependencies": {
         "@ffmpeg-installer/ffmpeg": "^1.1.0",
@@ -41,7 +41,7 @@
         "dev": "nodemon src/index.ts",
         "dev:refresh": "npm run clean:all && npm install && npm run dev",
         "create-admin": "ts-node scripts/create-admin.ts",
-        "verify": "ts-node scripts/verify-mullbot.ts",
+        "verify": "ts-node scripts/verify-whatsbot.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "build": "rimraf build && node esbuild.config.js && npm run copy-files",
         "deploy": "node ./index.js",
@@ -54,26 +54,24 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/mullblue/bot.git"
+        "url": "git+https://github.com/sancosmeit/whatsbot-it.git"
     },
     "keywords": [
-        "Mullbot",
-        "Compostaje",
-        "Sostenibilidad",
+        "WhatsBot IT",
+        "San Cosme IT",
         "WhatsApp",
         "Chatbot",
         "Gemini",
         "AI",
-        "Residuos Orgánicos",
-        "Biofertilizante",
-        "Ecología"
+        "Agente de Ventas",
+        "Ventas Inteligentes"
     ],
-    "author": "Müllblue",
+    "author": "San Cosme IT",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/mullblue/bot/issues"
+        "url": "https://github.com/sancosmeit/whatsbot-it/issues"
     },
-    "homepage": "https://github.com/mullblue/bot#readme",
+    "homepage": "https://github.com/sancosmeit/whatsbot-it#readme",
     "engines": {
         "node": "18.x"
     },

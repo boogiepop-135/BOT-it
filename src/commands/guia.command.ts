@@ -6,7 +6,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const chat = await message.getChat();
     
     const guia = `
-🌱 *GUÍA COMPLETA DE COMPOSTAJE MÜLLBLUE*
+📖 *GUÍA COMPLETA SAN COSME IT*
 
 *CÓMO FUNCIONA EL SISTEMA* 🔄
 1️⃣ *Depositar* - Coloca tus residuos orgánicos

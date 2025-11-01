@@ -1,10 +1,10 @@
-# 🌱 Mullbot - Agente de Ventas Inteligente para WhatsApp
+# 🤖 WhatsBot IT - Agente de Ventas Inteligente para WhatsApp
 
-Mullbot es un agente de ventas experto especializado en WhatsApp que utiliza la API de Gemini de Google para ayudar a las personas a adquirir el compostero fermentador Mullbot. Nuestro asistente virtual proporciona información experta sobre productos, maneja objeciones y guía a los clientes hasta cerrar la venta.
+WhatsBot IT es un agente de ventas experto especializado en WhatsApp que utiliza la API de Gemini de Google para ayudar a las personas con sus consultas. Nuestro asistente virtual proporciona información experta sobre productos, maneja objeciones y guía a los clientes hasta cerrar la venta.
 
 ## ✨ Características Principales
 
-- **🌱 Agente de Ventas Experto**: Especializado en compostero fermentador de 15L
+- **🤖 Agente de Ventas Experto**: Agente de ventas especializado
 - **🤖 Inteligencia Artificial Avanzada**: Utiliza Gemini AI para respuestas contextuales y orientadas a ventas
 - **📱 Comandos Especializados**: Comandos específicos para productos, precios, guías y métodos de pago
 - **🎯 Seguimiento de Leads**: Sistema de puntuación y seguimiento de clientes potenciales
@@ -28,13 +28,13 @@ Mullbot es un agente de ventas experto especializado en WhatsApp que utiliza la 
 ```bash
 # Clonar el repositorio
 git clone <tu-repositorio>
-cd mullbot
+cd whatsbot-it
 
 # Instalar dependencias
 npm install
 
 # Configurar variables de entorno
-cp mullbot.env.example .env
+cp whatsbot-it.env.example .env
 ```
 
 ### 2. Configuración de Variables de Entorno
@@ -51,8 +51,8 @@ PUPPETEER_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
 # Configuración básica
 ENV=development
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/mullbot
-JWT_SECRET=mullbot_jwt_secret_muy_seguro_2024
+MONGODB_URI=mongodb://localhost:27017/whatsbot-it
+JWT_SECRET=whatsbot_it_jwt_secret_muy_seguro_2024
 ```
 
 ### 3. Obtener API Key de Gemini
@@ -63,7 +63,7 @@ JWT_SECRET=mullbot_jwt_secret_muy_seguro_2024
 4. Copia la key generada
 5. Pégala en tu archivo `.env`
 
-### 4. Ejecutar Mullbot
+### 4. Ejecutar WhatsBot IT
 
 ```bash
 # Modo desarrollo (con recarga automática)
@@ -91,7 +91,7 @@ npm start
 |---------|-------------|---------|
 | `/chat [mensaje]` | Chatea con el agente de ventas | `/chat ¿Cuánto cuesta el compostero?` |
 | `/help` | Muestra todos los comandos disponibles | `/help` |
-| `/ping` | Verifica si Mullbot está funcionando | `/ping` |
+| `/ping` | Verifica si WhatsBot IT está funcionando | `/ping` |
 
 ### Comandos de Administración
 
@@ -102,22 +102,19 @@ npm start
 ## 🎯 Características del Agente de Ventas
 
 ### Conocimiento Especializado
-- **Producto**: Compostero fermentador de 15L
-- **Precio**: $1,490 MXN (antes $1,890)
-- **Incluye**: Compostero + Biocatalizador + Envío gratis
-- **Proceso**: 4 pasos simples (depositar, espolvorear, compactar, tapar)
-- **Tiempo**: 4-6 semanas para llenar, 2 semanas de fermentación
+- Agente de ventas especializado
+- Información detallada de productos
+- Gestión de consultas y objeciones
+- Seguimiento de leads y conversiones
 
 ### Manejo de Objeciones
-- **Precio**: Destaca valor, acompañamiento incluido, garantía
-- **Tamaño**: Dimensiones compactas (30x30x40 cm)
-- **Olor**: Sistema hermético, biocatalizador elimina olores
-- **Espacio**: Diseñado para espacios pequeños
+- Gestión inteligente de objeciones
+- Respuestas contextuales y personalizadas
+- Seguimiento de interacciones
 
 ### Métodos de Pago
-- **Transferencia Bancaria**: Banco Azteca, Cuenta: 127180013756372173
-- **Tarjetas**: 3 meses sin intereses via Mercado Pago
-- **Enlace**: https://mpago.li/1W2JhS5
+- Información detallada de métodos de pago
+- Integración con sistemas de pago
 
 ### Seguimiento de Leads
 - Sistema de puntuación automática
@@ -169,13 +166,13 @@ MONGODB_URI is missing
 
 ### Error de Conexión
 ```
-Error comunicándose con Mullbot
+Error comunicándose con WhatsBot IT
 ```
 **Solución**: Verifica tu conexión a internet y la validez de tu API key
 
 ## 📊 Monitoreo y Logs
 
-Mullbot genera logs detallados para:
+WhatsBot IT genera logs detallados para:
 - Interacciones de ventas
 - Puntuación de leads
 - Objeciones manejadas
@@ -191,7 +188,7 @@ Mullbot genera logs detallados para:
 
 ## 🤝 Contribuir
 
-¿Quieres contribuir a Mullbot? ¡Excelente!
+¿Quieres contribuir a WhatsBot IT? ¡Excelente!
 
 1. Fork el repositorio
 2. Crea una rama para tu feature
@@ -207,10 +204,10 @@ MIT License - Ver archivo LICENSE para más detalles.
 
 ¿Necesitas ayuda? Contacta con nosotros:
 - 📱 WhatsApp: +52 56 6453 1621
-- 📧 Email: mullblue.residuos@gmail.com
-- 📘 Facebook: Composta fácil con Müllblue
-- 📸 Instagram: @mullblue.oficial
+- 📧 Email: contacto@sancosmeit.com
+- 📘 Facebook: San Cosme IT
+- 📸 Instagram: @sancosmeit
 
 ---
 
-**Mullbot** - *Agente de ventas inteligente que transforma residuos en vida* 🌱✨
+**WhatsBot IT** - *Agente de ventas inteligente de San Cosme IT* 🤖✨
