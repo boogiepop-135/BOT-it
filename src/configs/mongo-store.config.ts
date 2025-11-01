@@ -16,7 +16,11 @@ export async function getMongoStore(): Promise<MongoStore> {
             }
 
             // Crear MongoStore usando la conexión de mongoose existente
-            mongoStore = await MongoStore.connect(mongoose.connection.db);
+            // MongoStore se crea directamente, no con un método estático
+            mongoStore = new MongoStore({
+                mongoose: mongoose
+            });
+            
             logger.info('MongoStore initialized for WhatsApp session storage');
         } catch (error) {
             logger.error('Failed to initialize MongoStore:', error);
@@ -28,14 +32,10 @@ export async function getMongoStore(): Promise<MongoStore> {
 }
 
 export function closeMongoStore(): Promise<void> {
+    // MongoStore no tiene método close(), simplemente limpiamos la referencia
     if (mongoStore) {
-        return mongoStore.close().then(() => {
-            mongoStore = null;
-            logger.info('MongoStore closed');
-        }).catch((error) => {
-            logger.error('Error closing MongoStore:', error);
-            mongoStore = null;
-        });
+        mongoStore = null;
+        logger.info('MongoStore reference cleared');
     }
     return Promise.resolve();
 }
