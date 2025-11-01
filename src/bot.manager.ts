@@ -1,6 +1,6 @@
 import { Client, Message, MessageTypes } from "whatsapp-web.js";
 import { AppConfig } from "./configs/app.config";
-import { ClientConfig } from "./configs/client.config";
+import { getClientConfig } from "./configs/client.config";
 import logger from "./configs/logger.config";
 import { UserI18n } from "./utils/i18n.util";
 import commands from "./commands";
