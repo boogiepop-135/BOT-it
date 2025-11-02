@@ -22,7 +22,6 @@ export class BotManager {
     private prefix = AppConfig.instance.getBotPrefix();
     private isPaused: boolean = false;
     private isReconnecting: boolean = false;
-    private offHoursMessageSent = new Map<string, number>(); // Map<phoneNumber, timestamp> para evitar spam de mensajes fuera de horario
 
     private constructor() {
         // El cliente se inicializará de forma asíncrona
@@ -370,71 +369,8 @@ export class BotManager {
             return;
         }
 
-        // Verificar horario de atención
-        const isBusinessHours = ScheduleUtil.isBusinessHours();
-        if (!isBusinessHours) {
-            try {
-                // Verificar que el cliente esté conectado antes de enviar mensaje
-                if (!this.client || !this.client.info || !this.client.info.wid) {
-                    logger.warn('Client not connected, skipping off-hours message');
-                    return;
-                }
-
-                // user ya fue obtenido antes, reutilizarlo si está disponible
-                if (!user || !user.number) {
-                    logger.warn('Message without valid contact information');
-                    return;
-                }
-
-                // Verificar nuevamente que no sea mensaje propio
-                if (user.isMe) {
-                    logger.debug('Off-hours message from bot itself, ignoring');
-                    return;
-                }
-
-                // Verificar si ya se envió un mensaje de fuera de horario a este usuario en los últimos 5 minutos
-                const lastSentTime = this.offHoursMessageSent.get(user.number);
-                const now = Date.now();
-                const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutos en milisegundos
-                
-                if (lastSentTime && (now - lastSentTime) < FIVE_MINUTES) {
-                    logger.debug(`Off-hours message already sent to ${user.number} recently, skipping`);
-                    return;
-                }
-
-                // Obtener idioma del usuario
-                userI18n = this.getUserI18n(user.number);
-                chat = await message.getChat();
-                
-                // Verificar nuevamente antes de enviar
-                if (!this.client || !this.client.info || !this.client.info.wid) {
-                    logger.warn('Client disconnected while preparing off-hours message');
-                    return;
-                }
-                
-                // Enviar mensaje de fuera de horario
-                const offHoursMessage = ScheduleUtil.getOffHoursMessage(userI18n.getLanguage());
-                await chat.sendMessage(offHoursMessage);
-                
-                // Guardar timestamp del mensaje enviado
-                this.offHoursMessageSent.set(user.number, now);
-                
-                logger.info(`Off-hours message sent to ${user.number}`);
-                return;
-            } catch (error) {
-                logger.error('Error sending off-hours message:', error);
-                // Si el error es por desconexión, no continuar
-                if (error instanceof Error && (
-                    error.message.includes('disconnected') ||
-                    error.message.includes('logout') ||
-                    error.message.includes('Session closed')
-                )) {
-                    logger.warn('Client disconnected during off-hours message send');
-                    return;
-                }
-                // Continuar con el procesamiento normal si hay otro tipo de error
-            }
-        }
+        // El bot sigue funcionando normalmente fuera de horario
+        // Solo se avisará sobre el tiempo de respuesta para tickets cuando se creen
 
         try {
             // user ya fue obtenido antes, verificar que esté disponible

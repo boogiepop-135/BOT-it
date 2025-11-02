@@ -3,6 +3,7 @@ import { UserI18n } from "../utils/i18n.util";
 import { TicketModel } from "../crm/models/ticket.model";
 import logger from "../configs/logger.config";
 import { ContactModel } from "../crm/models/contact.model";
+import { ScheduleUtil } from "../utils/schedule.util";
 
 // Detectar si el mensaje es sobre IT
 export function isITRelated(message: string): boolean {
@@ -198,7 +199,9 @@ async function createTicket(message: Message, args: string[], contact: any, chat
             'other': '📋'
         };
         
-        const response = `✅ *Ticket creado exitosamente*
+        // Verificar si es fuera de horario para agregar aviso
+        const isBusinessHours = ScheduleUtil.isBusinessHours();
+        let response = `✅ *Ticket creado exitosamente*
 
 📊 *${ticket.ticketNumber}*
 ${categoryEmoji[category]} *${title}*
@@ -208,6 +211,22 @@ ${statusEmoji[ticket.status]} Estado: ${ticket.status}
 ${priorityEmoji[priority]} Prioridad: ${priority}
 
 Tu ticket ha sido registrado y será atendido por el equipo de IT.`;
+
+        // Agregar aviso si es fuera de horario
+        if (!isBusinessHours) {
+            const nextBusinessHours = ScheduleUtil.getNextBusinessHours();
+            const nextDate = nextBusinessHours.toLocaleString('es-MX', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'America/Mexico_City'
+            });
+            
+            response += `\n\n⏰ *Aviso:* Fuera de horario de atención. Tu ticket será atendido en el siguiente horario hábil de IT (Lunes a Viernes, 9 AM - 5 PM) a partir del ${nextDate}.`;
+        }
         
         await message.reply(response);
         
@@ -611,7 +630,9 @@ async function createTicketFromConversation(message: Message, conversation: Tick
             'other': '📋'
         };
         
-        const response = `✅ *Ticket creado exitosamente*
+        // Verificar si es fuera de horario para agregar aviso
+        const isBusinessHours = ScheduleUtil.isBusinessHours();
+        let response = `✅ *Ticket creado exitosamente*
 
 📊 *${ticket.ticketNumber}*
 ${categoryEmoji[conversation.category!]} *${conversation.title}*
@@ -621,9 +642,25 @@ ${categoryEmoji[conversation.category!]} *${conversation.title}*
 ${priorityEmoji[priority]} Prioridad: ${priority}
 
 ✅ Tu ticket ha sido registrado y será atendido por el equipo de IT.
-Recibirás actualizaciones en cuanto haya progreso.
+Recibirás actualizaciones en cuanto haya progreso.`;
 
-*Ver mis tickets:* \`!ticket list\`
+        // Agregar aviso si es fuera de horario
+        if (!isBusinessHours) {
+            const nextBusinessHours = ScheduleUtil.getNextBusinessHours();
+            const nextDate = nextBusinessHours.toLocaleString('es-MX', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'America/Mexico_City'
+            });
+            
+            response += `\n\n⏰ *Aviso:* Fuera de horario de atención. Tu ticket será atendido en el siguiente horario hábil de IT (Lunes a Viernes, 9 AM - 5 PM) a partir del ${nextDate}.`;
+        }
+
+        response += `\n\n*Ver mis tickets:* \`!ticket list\`
 *Ver este ticket:* \`!ticket view ${ticket.ticketNumber}\`
 *Agregar comentario:* \`!ticket comment ${ticket.ticketNumber} tu mensaje\``;
         
