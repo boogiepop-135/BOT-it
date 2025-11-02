@@ -59,8 +59,20 @@ export default function (botManager: BotManager) {
                 clientState = 'not_initialized';
             }
 
+            // Determinar el estado final
+            let finalStatus = "unhealthy";
+            if (isClientReady) {
+                finalStatus = "healthy";
+            } else if (qrData.qrScanned && clientState === 'initializing') {
+                finalStatus = "initializing";
+            } else if (!qrData.qrScanned && clientState === 'not_initialized') {
+                finalStatus = "unhealthy";
+            } else if (clientState === 'error' || clientState === 'disconnected') {
+                finalStatus = "unhealthy";
+            }
+
             const healthStatus = {
-                status: isClientReady ? "healthy" : (qrData.qrScanned ? "initializing" : "unhealthy"),
+                status: finalStatus,
                 clientReady: isClientReady,
                 clientState: clientState,
                 uptime: process.uptime(),
