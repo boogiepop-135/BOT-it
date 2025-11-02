@@ -62,17 +62,22 @@ export default function (botManager: BotManager) {
             }
 
             // Determinar el estado final
+            // Si el cliente está listo (tiene info y wid), está healthy
+            // Si el QR fue escaneado pero client.info aún no está disponible, está initializing
             let finalStatus = "unhealthy";
-            if (isClientReady) {
+            if (isClientReady && client.info && client.info.wid) {
                 finalStatus = "healthy";
-            } else if (qrData.qrScanned && (clientState === 'initializing' || clientState === 'ready')) {
-                // Si el QR fue escaneado pero client.info aún no está disponible,
-                // puede estar cargando después de restaurar desde MongoDB
+            } else if (qrData.qrScanned && client && client.pupPage) {
+                // QR escaneado y tiene puppeteer page pero aún no tiene info completo
+                // Esto pasa cuando se restaura desde MongoDB - está cargando
                 finalStatus = "initializing";
             } else if (!qrData.qrScanned && clientState === 'not_initialized') {
                 finalStatus = "unhealthy";
-            } else if (clientState === 'error' || clientState === 'disconnected') {
+            } else if (clientState === 'error' || (clientState === 'disconnected' && !qrData.qrScanned)) {
                 finalStatus = "unhealthy";
+            } else if (qrData.qrScanned) {
+                // Si el QR fue escaneado pero no está completamente listo, está initializing
+                finalStatus = "initializing";
             }
 
             const healthStatus = {
