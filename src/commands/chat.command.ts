@@ -21,9 +21,22 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const saludosSimples = ['hola', 'hi', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hey'];
     const esSaludoSimple = saludosSimples.includes(query.toLowerCase().trim());
     
-    // Verificar si hay una conversación activa de ticket
+    // Verificar si hay una conversación activa de ticket o reserva
     try {
         const contact = await message.getContact();
+        
+        // Verificar conversación de reserva primero
+        const horariosModule = require('./horarios.command');
+        const reservaConversation = horariosModule.conversations.get(contact.number);
+        
+        if (reservaConversation && reservaConversation.step && reservaConversation.step !== 'none') {
+            logger.info(`Active reservation conversation detected for ${contact.number}`);
+            const { run: runHorarios } = await import('./horarios.command');
+            await runHorarios(message, args, userI18n);
+            return;
+        }
+        
+        // Verificar conversación de ticket
         const ticketModule = require('./ticket.command');
         const userConversation = ticketModule.conversations.get(contact.number);
         
@@ -38,6 +51,23 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     
     // Respuestas directas del menú (check these first!)
     const cleanQuery = query.trim().toLowerCase();
+    
+    // Detectar intención de reserva de sala ANTES de las otras opciones
+    const reservaKeywords = [
+        'reservar', 'reserva', 'sala de conferencias', 'sala conferencias', 
+        'sala', 'conferencia', 'conferencias', 'reunión', 'reunion', 'meeting',
+        'quiero reservar', 'gustaría reservar', 'gustaria reservar', 'necesito reservar',
+        'disponible la sala', 'horario disponible', 'agendar', 'agenda'
+    ];
+    
+    const esReserva = reservaKeywords.some(keyword => cleanQuery.includes(keyword));
+    
+    if (esReserva) {
+        logger.info(`Reservation intent detected: ${cleanQuery}`);
+        const { run: runHorarios } = await import('./horarios.command');
+        await runHorarios(message, args, userI18n);
+        return;
+    }
     
     // Opciones de menú por número
     if (cleanQuery === '1' || cleanQuery === '1️⃣' || cleanQuery === 'ticket' || cleanQuery === 'crear ticket' || cleanQuery === 'crear' || cleanQuery === 'nuevo') {

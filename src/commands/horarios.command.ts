@@ -115,19 +115,89 @@ export const run = async (message: Message, args: string[] | null, userI18n: Use
 };
 
 /**
- * Iniciar proceso de reserva
+ * Iniciar proceso de reserva - Versión optimizada
  */
 async function iniciarReserva(message: Message, userNumber: string) {
+    const textoMensaje = message.body.trim();
+    
+    // Intentar extraer información del mensaje inicial
+    let fecha: string | null = null;
+    let hora_inicio: string | null = null;
+    let hora_fin: string | null = null;
+    let titulo: string | null = null;
+    
+    // Buscar fecha
+    const fechaRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-]?(\d{2,4})?/;
+    const matchFecha = textoMensaje.match(fechaRegex);
+    if (matchFecha) {
+        fecha = parsearFecha(matchFecha[0]);
+    }
+    
+    if (!fecha) {
+        if (textoMensaje.toLowerCase().includes("mañana") || textoMensaje.toLowerCase().includes("tomorrow")) {
+            fecha = parsearFecha("mañana");
+        } else if (textoMensaje.toLowerCase().includes("hoy") || textoMensaje.toLowerCase().includes("today")) {
+            fecha = parsearFecha("hoy");
+        }
+    }
+    
+    // Buscar horas
+    const horaInicioRegex = /(?:a\s*las?|desde|from|at)\s*(\d{1,2}[:\.]?\d{0,2})\s*(?:am|pm|hrs|horas)?/i;
+    const matchHoraInicio = textoMensaje.match(horaInicioRegex);
+    if (matchHoraInicio) {
+        hora_inicio = parsearHora(matchHoraInicio[1]);
+    }
+    
+    const horaFinRegex = /(?:hasta|to|a|until|-\s*)(\d{1,2}[:\.]?\d{0,2})\s*(?:am|pm|hrs|horas)?/i;
+    const matchHoraFin = textoMensaje.match(horaFinRegex);
+    if (matchHoraFin) {
+        hora_fin = parsearHora(matchHoraFin[1]);
+    }
+    
+    // Buscar título
+    const tituloRegex = /(?:titulada?|titulo|title|nombre|name|para|for|reunión|reunion|meeting)\s*["']?([^"'\n]+?)["']?/i;
+    const matchTitulo = textoMensaje.match(tituloRegex);
+    if (matchTitulo) {
+        titulo = matchTitulo[1].trim();
+    }
+    
     const conversation: ReservaConversation = {
-        step: 'telefono'
+        step: 'telefono',
+        fecha: fecha || undefined,
+        hora_inicio: hora_inicio || undefined,
+        hora_fin: hora_fin || undefined,
+        titulo: titulo || undefined
     };
     conversations.set(userNumber, conversation);
 
-    await message.reply(
-        `📅 *Reserva de Sala de Conferencias*\n\n` +
-        `Para hacer la reserva necesito tu número de teléfono, por favor.\n\n` +
-        `_Escribe \`cancel\` para cancelar._`
-    );
+    // Mensaje optimizado según información obtenida
+    let mensaje = `📅 *Reserva de Sala de Conferencias*\n\n`;
+    
+    if (fecha && hora_inicio && hora_fin && titulo) {
+        // Tiene toda la información, solo pedir teléfono
+        mensaje += `Veo que quieres reservar:\n`;
+        mensaje += `📅 ${fecha} | ⏰ ${hora_inicio}-${hora_fin} | 📝 ${titulo}\n\n`;
+        mensaje += `Solo necesito tu número de teléfono para continuar.`;
+    } else if (fecha || hora_inicio || titulo) {
+        // Tiene algo de información
+        mensaje += `Para hacer la reserva necesito tu número de teléfono`;
+        if (!fecha) mensaje += ` y la fecha`;
+        if (!hora_inicio || !hora_fin) mensaje += ` y el horario`;
+        if (!titulo) mensaje += ` y el título`;
+        mensaje += `.\n\n`;
+        if (fecha) mensaje += `✅ Fecha: ${fecha}\n`;
+        if (hora_inicio) mensaje += `✅ Hora inicio: ${hora_inicio}\n`;
+        if (hora_fin) mensaje += `✅ Hora fin: ${hora_fin}\n`;
+        if (titulo) mensaje += `✅ Título: ${titulo}\n`;
+        mensaje += `\nPor favor, proporciona tu número de teléfono primero.`;
+    } else {
+        // No tiene información, mensaje normal
+        mensaje += `Para hacer la reserva necesito tu número de teléfono, por favor.`;
+    }
+    
+    mensaje += `\n\n_Escribe \`cancel\` para cancelar._`;
+
+    await message.reply(mensaje);
 }
 
 /**
@@ -186,19 +256,47 @@ async function processReservaConversation(message: Message, conversation: Reserv
                 }
 
                 // Usuario válido, continuar
-                if (usuario.strikes && usuario.strikes > 0) {
-                    await message.reply(
-                        `✅ Hola ${usuario.nombre || 'usuario'}! Veo que tienes ${usuario.strikes} strike(s). ` +
-                        `Recuerda que con 3 strikes quedas bloqueado. Continuemos con tu reserva.\n\n` +
-                        `¿Qué fecha quieres reservar? (ejemplo: mañana, 15/01/2024)`
-                    );
+                // Si ya tenemos fecha del mensaje inicial, saltar ese paso
+                if (conversation.fecha) {
+                    conversation.step = 'hora_inicio';
+                    let mensajeSaludo = `✅ Hola ${usuario.nombre || 'usuario'}!`;
+                    if (usuario.strikes && usuario.strikes > 0) {
+                        mensajeSaludo += ` Tienes ${usuario.strikes} strike(s). `;
+                    }
+                    mensajeSaludo += `\n\n✅ Fecha: ${conversation.fecha}`;
+                    
+                    if (!conversation.hora_inicio) {
+                        mensajeSaludo += `\n\n¿A qué hora quieres que inicie? (formato: HH:MM)`;
+                    } else {
+                        conversation.step = 'hora_fin';
+                        mensajeSaludo += `\n✅ Hora inicio: ${conversation.hora_inicio}`;
+                        if (!conversation.hora_fin) {
+                            mensajeSaludo += `\n\n¿A qué hora quieres que termine? (formato: HH:MM)`;
+                        } else {
+                            conversation.step = 'titulo';
+                            mensajeSaludo += `\n✅ Hora fin: ${conversation.hora_fin}`;
+                            if (!conversation.titulo) {
+                                mensajeSaludo += `\n\n¿Cuál es el título de la reunión?`;
+                            }
+                        }
+                    }
+                    await message.reply(mensajeSaludo);
                 } else {
-                    await message.reply(
-                        `✅ Hola ${usuario.nombre || 'usuario'}! Veo que tienes 0 strikes. Continuemos con tu reserva.\n\n` +
-                        `¿Qué fecha quieres reservar? (ejemplo: mañana, 15/01/2024)`
-                    );
+                    // No tenemos fecha, preguntar
+                    if (usuario.strikes && usuario.strikes > 0) {
+                        await message.reply(
+                            `✅ Hola ${usuario.nombre || 'usuario'}! Tienes ${usuario.strikes} strike(s). ` +
+                            `Recuerda: 3 strikes = bloqueo.\n\n` +
+                            `¿Qué fecha? (ej: mañana, 15/01/2024)`
+                        );
+                    } else {
+                        await message.reply(
+                            `✅ Hola ${usuario.nombre || 'usuario'}!\n\n` +
+                            `¿Qué fecha? (ej: mañana, 15/01/2024)`
+                        );
+                    }
+                    conversation.step = 'fecha';
                 }
-                conversation.step = 'fecha';
             }
             break;
 
@@ -208,71 +306,119 @@ async function processReservaConversation(message: Message, conversation: Reserv
                 return;
             }
             conversation.nombre = texto;
-            conversation.step = 'fecha';
-            await message.reply(
-                `✅ Gracias ${texto}! Tu usuario será creado en el sistema.\n\n` +
-                `¿Qué fecha quieres reservar? (ejemplo: mañana, 15/01/2024)`
-            );
+            
+            // Si ya tenemos fecha del mensaje inicial, saltar ese paso
+            if (conversation.fecha) {
+                conversation.step = 'hora_inicio';
+                let mensaje = `✅ ${texto}, tu usuario será creado.\n\n✅ Fecha: ${conversation.fecha}`;
+                if (!conversation.hora_inicio) {
+                    mensaje += `\n\n¿Hora de inicio? (HH:MM)`;
+                } else {
+                    conversation.step = 'hora_fin';
+                    mensaje += `\n✅ Hora inicio: ${conversation.hora_inicio}`;
+                    if (!conversation.hora_fin) {
+                        mensaje += `\n\n¿Hora de fin? (HH:MM)`;
+                    } else {
+                        conversation.step = 'titulo';
+                        mensaje += `\n✅ Hora fin: ${conversation.hora_fin}`;
+                        if (!conversation.titulo) {
+                            mensaje += `\n\n¿Título de la reunión?`;
+                        }
+                    }
+                }
+                await message.reply(mensaje);
+            } else {
+                conversation.step = 'fecha';
+                await message.reply(
+                    `✅ Gracias ${texto}! Tu usuario será creado.\n\n` +
+                    `¿Qué fecha? (ej: mañana, 15/01/2024)`
+                );
+            }
             break;
 
         case 'fecha':
             const fecha = parsearFecha(texto);
             if (!fecha || !validarFecha(fecha)) {
                 await message.reply(
-                    `❌ No pude identificar la fecha. Por favor, proporciona la fecha:\n\n` +
-                    `Ejemplos:\n` +
-                    `• "mañana"\n` +
-                    `• "15/01/2024"\n` +
-                    `• "hoy"`
+                    `❌ Fecha no válida. Ejemplos: "mañana", "15/01/2024", "hoy"`
                 );
                 return;
             }
             conversation.fecha = fecha;
-            conversation.step = 'hora_inicio';
-            await message.reply(`¿A qué hora quieres que inicie la reserva? (formato: HH:MM, ejemplo: 14:00 para las 2 PM)`);
+            
+            // Si ya tenemos hora_inicio del mensaje inicial, saltar ese paso
+            if (conversation.hora_inicio) {
+                conversation.step = 'hora_fin';
+                let mensaje = `✅ Fecha: ${fecha}\n✅ Hora inicio: ${conversation.hora_inicio}`;
+                if (!conversation.hora_fin) {
+                    mensaje += `\n\n¿Hora de fin? (HH:MM)`;
+                } else {
+                    conversation.step = 'titulo';
+                    mensaje += `\n✅ Hora fin: ${conversation.hora_fin}`;
+                    if (!conversation.titulo) {
+                        mensaje += `\n\n¿Título?`;
+                    }
+                }
+                await message.reply(mensaje);
+            } else {
+                conversation.step = 'hora_inicio';
+                await message.reply(`✅ Fecha: ${fecha}\n\n¿Hora de inicio? (HH:MM, ej: 14:00)`);
+            }
             break;
 
         case 'hora_inicio':
             const horaInicio = parsearHora(texto);
             if (!horaInicio || !validarHora(horaInicio)) {
-                await message.reply(
-                    `❌ Formato de hora inválido. Por favor, usa formato HH:MM (24 horas):\n\n` +
-                    `Ejemplos:\n` +
-                    `• "14:00" (2 PM)\n` +
-                    `• "09:30" (9:30 AM)\n` +
-                    `• "10:00"`
-                );
+                await message.reply(`❌ Formato inválido. Usa HH:MM (ej: 14:00)`);
                 return;
             }
             conversation.hora_inicio = horaInicio;
-            conversation.step = 'hora_fin';
-            await message.reply(`¿A qué hora quieres que termine la reserva? (formato: HH:MM, ejemplo: 16:00 para las 4 PM)`);
+            
+            // Si ya tenemos hora_fin del mensaje inicial, saltar ese paso
+            if (conversation.hora_fin) {
+                // Validar rango
+                if (!validarRangoHoras(horaInicio, conversation.hora_fin)) {
+                    await message.reply(`❌ La hora de fin debe ser posterior a ${horaInicio}. Por favor, corrige.`);
+                    return;
+                }
+                conversation.step = 'titulo';
+                let mensaje = `✅ Hora inicio: ${horaInicio}\n✅ Hora fin: ${conversation.hora_fin}`;
+                if (!conversation.titulo) {
+                    mensaje += `\n\n¿Título?`;
+                } else {
+                    // Ya tenemos todo, completar
+                    await completarReserva(message, conversation, userNumber);
+                    return;
+                }
+                await message.reply(mensaje);
+            } else {
+                conversation.step = 'hora_fin';
+                await message.reply(`✅ Hora inicio: ${horaInicio}\n\n¿Hora de fin? (HH:MM, ej: 16:00)`);
+            }
             break;
 
         case 'hora_fin':
             const horaFin = parsearHora(texto);
             if (!horaFin || !validarHora(horaFin)) {
-                await message.reply(
-                    `❌ Formato de hora inválido. Por favor, usa formato HH:MM (24 horas):\n\n` +
-                    `Ejemplos:\n` +
-                    `• "16:00" (4 PM)\n` +
-                    `• "11:30" (11:30 AM)\n` +
-                    `• "17:00"`
-                );
+                await message.reply(`❌ Formato inválido. Usa HH:MM (ej: 16:00)`);
                 return;
             }
 
             if (conversation.hora_inicio && !validarRangoHoras(conversation.hora_inicio, horaFin)) {
-                await message.reply(
-                    `❌ La hora de fin (${horaFin}) debe ser posterior a la hora de inicio (${conversation.hora_inicio}).\n\n` +
-                    `Por favor, proporciona una hora de fin válida.`
-                );
+                await message.reply(`❌ La hora de fin debe ser posterior a ${conversation.hora_inicio}. Por favor, corrige.`);
                 return;
             }
 
             conversation.hora_fin = horaFin;
+            
+            // Si ya tenemos título del mensaje inicial, completar directamente
+            if (conversation.titulo) {
+                await completarReserva(message, conversation, userNumber);
+                return;
+            }
+            
             conversation.step = 'titulo';
-            await message.reply(`¿Cuál es el título o nombre de la reunión?`);
+            await message.reply(`✅ Hora fin: ${horaFin}\n\n¿Título de la reunión?`);
             break;
 
         case 'titulo':
@@ -373,23 +519,20 @@ async function completarReserva(message: Message, conversation: ReservaConversat
             return;
         }
 
-        // Éxito
+        // Éxito - Mensaje optimizado
         let mensajeExito = `✅ *¡Reserva confirmada!*\n\n`;
-        mensajeExito += `Has reservado la sala para ${conversation.fecha} de ${conversation.hora_inicio} a ${conversation.hora_fin}.\n`;
-        mensajeExito += `📝 *Título:* ${conversation.titulo}\n`;
+        mensajeExito += `📅 ${conversation.fecha} | ⏰ ${conversation.hora_inicio}-${conversation.hora_fin}\n`;
+        mensajeExito += `📝 ${conversation.titulo}\n`;
         
         if (!conversation.usuarioExiste && conversation.nombre) {
-            mensajeExito += `\n✅ Tu usuario ha sido creado en el sistema.`;
+            mensajeExito += `\n✅ Usuario creado en el sistema.`;
         }
         
         if (conversation.strikes !== undefined && conversation.strikes > 0) {
-            mensajeExito += `\n⚠️ Recuerda: Actualmente tienes ${conversation.strikes} strike(s). Con 3 strikes quedas bloqueado.`;
+            mensajeExito += `\n⚠️ Tienes ${conversation.strikes}/3 strikes.`;
         }
         
-        mensajeExito += `\n\n📌 *Recuerda:*\n`;
-        mensajeExito += `• Llegar a tiempo\n`;
-        mensajeExito += `• Respetar el horario reservado\n`;
-        mensajeExito += `• Cancelar si no puedes asistir\n`;
+        mensajeExito += `\n\n📌 Recuerda: Llegar a tiempo, respetar horario y cancelar si no puedes asistir.`;
 
         await message.reply(mensajeExito);
         conversations.delete(userNumber);
