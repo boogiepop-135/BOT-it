@@ -2248,26 +2248,64 @@
     window.changeUserRole = async function(phoneNumber, currentRole) {
       const roleOptions = [
         { value: 'user', label: 'Usuario' },
+        { value: 'salma', label: 'Salma' },
+        { value: 'francisco', label: 'Francisco' },
+        { value: 'rh_karina', label: 'RH Karina' },
+        { value: 'rh_nubia', label: 'RH Nubia' },
+        { value: 'desarrollo_estrategia_inrra', label: 'Desarrollo y Estrategia Inrra' },
         { value: 'boss', label: 'Jefe' },
-        { value: 'ceo', label: 'CEO' }
+        { value: 'ceo', label: 'CEO' },
+        { value: 'admin', label: 'Administrador' }
       ];
       
-      const roleLabels = { 'user': 'Usuario', 'boss': 'Jefe', 'ceo': 'CEO' };
+      const roleLabels = {
+        'user': 'Usuario',
+        'salma': 'Salma',
+        'francisco': 'Francisco',
+        'rh_karina': 'RH Karina',
+        'rh_nubia': 'RH Nubia',
+        'desarrollo_estrategia_inrra': 'Desarrollo y Estrategia Inrra',
+        'boss': 'Jefe',
+        'ceo': 'CEO',
+        'admin': 'Administrador'
+      };
       
-      const options = roleOptions.map(r => 
-        `${r.value === currentRole ? '★ ' : ''}${r.label}`
+      // Crear un select con todos los roles
+      const roleList = roleOptions.map((r, index) => 
+        `${index + 1}. ${r.value === currentRole ? '★ ' : ''}${r.label}`
       ).join('\n');
       
-      const choice = prompt(`Cambiar rol de ${phoneNumber}\n\nRol actual: ${roleLabels[currentRole] || 'Usuario'}\n\nOpciones:\n${options}`);
+      const choice = prompt(
+        `Cambiar rol de ${phoneNumber}\n\n` +
+        `Rol actual: ${roleLabels[currentRole] || 'Usuario'}\n\n` +
+        `Opciones:\n${roleList}\n\n` +
+        `Escribe el número o nombre del rol:`
+      );
       
       if (!choice) return;
       
-      // Remove the ★ if present
-      const selectedOption = choice.replace('★ ', '').trim();
-      const selectedRole = roleOptions.find(r => r.label === selectedOption);
+      // Intentar encontrar por número
+      const choiceNum = parseInt(choice.trim());
+      let selectedRole = null;
+      
+      if (!isNaN(choiceNum) && choiceNum >= 1 && choiceNum <= roleOptions.length) {
+        selectedRole = roleOptions[choiceNum - 1];
+      } else {
+        // Buscar por nombre
+        const choiceClean = choice.replace('★ ', '').trim();
+        selectedRole = roleOptions.find(r => 
+          r.label.toLowerCase() === choiceClean.toLowerCase() ||
+          r.value === choiceClean
+        );
+      }
       
       if (!selectedRole) {
-        alert('Opción inválida');
+        alert('Opción inválida. Por favor selecciona un rol válido.');
+        return;
+      }
+      
+      if (selectedRole.value === currentRole) {
+        alert('El usuario ya tiene ese rol asignado.');
         return;
       }
       
@@ -2286,7 +2324,7 @@
         const data = await response.json();
         
         if (response.ok && data.success) {
-          alert(`✅ Rol actualizado a ${selectedOption}`);
+          alert(`✅ Rol actualizado a ${selectedRole.label}\n\nEl usuario recibirá un mensaje de confirmación por WhatsApp.`);
           loadUsers();
         } else {
           alert(`❌ Error: ${data.error || 'Error al cambiar rol'}`);

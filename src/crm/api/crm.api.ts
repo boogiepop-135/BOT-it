@@ -7,6 +7,7 @@ import { CampaignModel } from '../models/campaign.model';
 import { ContactModel } from '../models/contact.model';
 import { PaymentReminderModel } from '../models/payment-reminder.model';
 import { AuthService } from '../utils/auth.util';
+import { sendRoleAssignmentMessage } from '../../utils/role-assignment.util';
 import projectsApi from './projects.api';
 import rhApi from './rh.api';
 import financeApi from './finance.api';
@@ -102,14 +103,28 @@ export default function (botManager: BotManager) {
             const { phoneNumber } = req.params;
             const { role } = req.body;
             
-            if (!role || !['user', 'boss', 'ceo'].includes(role)) {
-                return res.status(400).json({ error: 'Role must be user, boss, or ceo' });
+            // Roles permitidos
+            const allowedRoles = ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin'];
+            
+            if (!role || !allowedRoles.includes(role)) {
+                return res.status(400).json({ error: `Role must be one of: ${allowedRoles.join(', ')}` });
             }
             
-            await ContactModel.findOneAndUpdate(
+            // Obtener contacto actual para comparar rol anterior
+            const contact = await ContactModel.findOne({ phoneNumber });
+            const previousRole = contact?.role || 'user';
+            
+            // Actualizar rol
+            const updatedContact = await ContactModel.findOneAndUpdate(
                 { phoneNumber },
-                { $set: { role } }
+                { $set: { role } },
+                { new: true, upsert: true }
             );
+            
+            // Si el rol cambió, enviar mensaje de confirmación
+            if (previousRole !== role) {
+                await sendRoleAssignmentMessage(botManager, phoneNumber, role, updatedContact?.name || updatedContact?.pushName || phoneNumber);
+            }
             
             res.json({ success: true, message: `Rol actualizado a ${role}` });
         } catch (error) {

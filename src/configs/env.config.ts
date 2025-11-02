@@ -21,6 +21,9 @@ class EnvConfig {
     // Números de teléfono de jefes para personalización de reportes
     static SALMA_PHONE = process.env.SALMA_PHONE || '';
     static FRANCISCO_PHONE = process.env.FRANCISCO_PHONE || '';
+    // Roles de los jefes (boss, ceo, admin)
+    static SALMA_ROLE = process.env.SALMA_ROLE || 'boss';
+    static FRANCISCO_ROLE = process.env.FRANCISCO_ROLE || 'boss';
 
     static validate() {
 

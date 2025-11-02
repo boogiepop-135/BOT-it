@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export type ContactRole = 'user' | 'salma' | 'francisco' | 'rh_karina' | 'rh_nubia' | 'desarrollo_estrategia_inrra' | 'boss' | 'ceo' | 'admin';
+
 export interface IContact extends Document {
     phoneNumber: string;
     name?: string;
@@ -11,7 +13,7 @@ export interface IContact extends Document {
     tags: string[];
     botPaused?: boolean;
     botPausedAt?: Date;
-    role?: 'user' | 'boss' | 'ceo'; // Rol del usuario para personalización
+    role?: ContactRole; // Rol del usuario para personalización
 }
 
 const ContactSchema = new Schema<IContact>({
@@ -26,7 +28,7 @@ const ContactSchema = new Schema<IContact>({
     botPausedAt: Date,
     role: { 
         type: String, 
-        enum: ['user', 'boss', 'ceo'], 
+        enum: ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin'], 
         default: 'user' 
     }
 }, { timestamps: true });

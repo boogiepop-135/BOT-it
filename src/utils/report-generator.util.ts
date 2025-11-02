@@ -312,42 +312,60 @@ export async function gatherReportData(
 }
 
 /**
- * Obtener nombre del destinatario desde número de teléfono
+ * Obtener información del destinatario desde número de teléfono
  * Configuración desde variables de entorno
  */
-function getRecipientName(phoneNumber: string): string | null {
+export interface BossInfo {
+    name: string;
+    role: 'boss' | 'ceo' | 'admin';
+}
+
+export function getBossInfo(phoneNumber: string): BossInfo | null {
     // Normalizar número (remover caracteres especiales)
     const phoneNormalized = phoneNumber.replace(/[^0-9]/g, '');
     
     // Buscar en variables de entorno primero
     if (EnvConfig.SALMA_PHONE && phoneNormalized === EnvConfig.SALMA_PHONE.replace(/[^0-9]/g, '')) {
-        return 'Salma';
+        return {
+            name: 'Salma',
+            role: (EnvConfig.SALMA_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
+        };
     }
     
     if (EnvConfig.FRANCISCO_PHONE && phoneNormalized === EnvConfig.FRANCISCO_PHONE.replace(/[^0-9]/g, '')) {
-        return 'Francisco';
+        return {
+            name: 'Francisco',
+            role: (EnvConfig.FRANCISCO_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
+        };
     }
-    
-    // Buscar en la base de datos por rol
-    // Esto permite configurar roles desde el frontend
-    // Se puede buscar en ContactModel por role: 'boss' o 'ceo'
     
     // Búsqueda por palabras clave como fallback
     const phoneLower = phoneNumber.toLowerCase().replace(/[^0-9a-z]/g, '');
-    const keywords: Record<string, string> = {
-        'salma': 'Salma',
-        'francisco': 'Francisco',
-        'franco': 'Francisco',
-        'frank': 'Francisco'
+    const keywords: Record<string, { name: string; defaultRole: 'boss' | 'ceo' }> = {
+        'salma': { name: 'Salma', defaultRole: 'boss' },
+        'francisco': { name: 'Francisco', defaultRole: 'boss' },
+        'franco': { name: 'Francisco', defaultRole: 'boss' },
+        'frank': { name: 'Francisco', defaultRole: 'boss' }
     };
     
-    for (const [key, name] of Object.entries(keywords)) {
+    for (const [key, info] of Object.entries(keywords)) {
         if (phoneLower.includes(key)) {
-            return name;
+            return {
+                name: info.name,
+                role: info.defaultRole
+            };
         }
     }
     
     return null;
+}
+
+/**
+ * Obtener nombre del destinatario desde número de teléfono (compatibilidad)
+ */
+export function getRecipientName(phoneNumber: string): string | null {
+    const bossInfo = getBossInfo(phoneNumber);
+    return bossInfo ? bossInfo.name : null;
 }
 
 /**

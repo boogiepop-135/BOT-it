@@ -89,7 +89,81 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         return;
     }
     
-    // Opciones de menú por número
+    // Detectar si el usuario es un jefe (Salma/Francisco) para mostrar menú personalizado
+    let isBossUser = false;
+    let bossUserName = '';
+    let bossUserRole = 'user';
+    
+    try {
+        const contact = await message.getContact();
+        const { getBossInfo } = await import('../utils/report-generator.util');
+        const bossInfo = getBossInfo(contact.number);
+        if (bossInfo) {
+            isBossUser = true;
+            bossUserName = bossInfo.name;
+            bossUserRole = bossInfo.role;
+        }
+    } catch (error) {
+        // Ignorar errores de detección
+    }
+    
+    // Si es jefe y selecciona una opción del menú personalizado
+    if (isBossUser && bossUserName) {
+        if (cleanQuery === '1' || cleanQuery === '1️⃣' || cleanQuery === 'proyectos curso' || cleanQuery === 'proyectos activos' || cleanQuery === 'proyectos') {
+            const { run: runProyectos } = await import('./proyectos.command');
+            await runProyectos(message, ['list'], userI18n);
+            return;
+        }
+        
+        if (cleanQuery === '2' || cleanQuery === '2️⃣' || cleanQuery === 'proyectos futuros' || cleanQuery === 'futuros') {
+            await mostrarProyectosFuturos(message);
+            return;
+        }
+        
+        if (cleanQuery === '3' || cleanQuery === '3️⃣' || cleanQuery === 'tareas activas' || cleanQuery === 'tareas') {
+            await mostrarTareasActivas(message);
+            return;
+        }
+        
+        if (cleanQuery === '4' || cleanQuery === '4️⃣' || cleanQuery === 'estadísticas' || cleanQuery === 'estadisticas') {
+            await mostrarEstadisticasProyectos(message);
+            return;
+        }
+        
+        if (cleanQuery === '5' || cleanQuery === '5️⃣' || cleanQuery === 'reporte semanal' || cleanQuery === 'reporte') {
+            await mostrarReporteSemanal(message);
+            return;
+        }
+        
+        if (cleanQuery === '6' || cleanQuery === '6️⃣' || cleanQuery === 'métricas' || cleanQuery === 'metricas') {
+            await mostrarMetricasIT(message);
+            return;
+        }
+        
+        if (cleanQuery === '7' || cleanQuery === '7️⃣' || cleanQuery === 'tickets' || cleanQuery === 'tickets abiertos') {
+            const { run: runTicket } = await import('./ticket.command');
+            await runTicket(message, ['list'], userI18n);
+            return;
+        }
+        
+        if (cleanQuery === '8' || cleanQuery === '8️⃣' || cleanQuery === 'reservas' || cleanQuery === 'horarios') {
+            const { run: runHorarios } = await import('./horarios.command');
+            await runHorarios(message, ['consultar'], userI18n);
+            return;
+        }
+        
+        if (cleanQuery === '9' || cleanQuery === '9️⃣' || cleanQuery === 'reportes programados') {
+            await mostrarReportesProgramados(message);
+            return;
+        }
+        
+        if (cleanQuery === '0' || cleanQuery === '0️⃣' || cleanQuery === 'ayuda' || cleanQuery === 'help') {
+            await mostrarAyudaJefe(message, bossUserName, bossUserRole);
+            return;
+        }
+    }
+    
+    // Opciones de menú por número (para usuarios normales)
     if (cleanQuery === '1' || cleanQuery === '1️⃣' || cleanQuery === 'ticket' || cleanQuery === 'crear ticket' || cleanQuery === 'crear' || cleanQuery === 'nuevo') {
         // Start ticket conversation
         const { run: runTicket } = await import('./ticket.command');
@@ -211,12 +285,41 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         // Get user role for personalized greeting
         let userRole = 'user';
         let userName = '';
+        let isBoss = false;
+        let bossName = '';
+        
         try {
             const contact = await message.getContact();
-            const dbContact = await require('../crm/models/contact.model').ContactModel.findOne({ phoneNumber: contact.number });
-            if (dbContact) {
-                userRole = dbContact.role || 'user';
-                userName = dbContact.name || dbContact.pushName || '';
+            const ContactModel = require('../crm/models/contact.model').ContactModel;
+            
+            // Verificar si es Salma o Francisco usando variables de entorno
+            const { getBossInfo } = await import('../utils/report-generator.util');
+            const bossInfo = getBossInfo(contact.number);
+            
+            if (bossInfo) {
+                isBoss = true;
+                bossName = bossInfo.name;
+                userRole = bossInfo.role; // Usar el rol configurado (boss, ceo, admin)
+                // Asignar automáticamente el rol y nombre en la base de datos
+                await ContactModel.findOneAndUpdate(
+                    { phoneNumber: contact.number },
+                    { 
+                        $set: { 
+                            role: bossInfo.role,
+                            name: bossInfo.name 
+                        } 
+                    },
+                    { upsert: true, new: true }
+                );
+                userName = bossInfo.name;
+            }
+            
+            const dbContact = await ContactModel.findOne({ phoneNumber: contact.number });
+            if (dbContact && !bossName) {
+                userRole = dbContact.role || userRole;
+                userName = dbContact.name || dbContact.pushName || userName;
+            } else if (!userName) {
+                userName = contact.name || contact.pushname || '';
             }
         } catch (error) {
             logger.error('Error getting contact role:', error);
@@ -225,6 +328,44 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         // Personalized greetings based on role
         let greeting = '👋 ¡Hola!';
         let welcomeMsg = '¡Bienvenido al Sistema de Soporte IT de San Cosme Orgánico! 🤩';
+        
+        // Presentación personalizada para Salma y Francisco con menú personalizado
+        if (isBoss && bossName) {
+            greeting = `👋 ¡Hola ${bossName}!`;
+            welcomeMsg = `Soy el asistente virtual de IT de San Cosme Orgánico. 🤖\n\nComo ${userRole === 'ceo' ? 'CEO' : userRole === 'admin' ? 'Administrador' : 'Directivo'}, tienes acceso completo al sistema.\n\n`;
+            
+            const menuPersonalizado = `
+🔧 *¿En qué puedo ayudarte? Selecciona un número:*
+
+📊 *PROYECTOS Y TAREAS:*
+1️⃣ Ver proyectos en curso
+2️⃣ Ver proyectos futuros/planificados
+3️⃣ Ver todas las tareas activas
+4️⃣ Ver estadísticas de proyectos
+
+📈 *REPORTES Y MÉTRICAS:*
+5️⃣ Ver reporte semanal
+6️⃣ Ver métricas IT generales
+7️⃣ Ver tickets abiertos
+
+📅 *GESTIÓN:*
+8️⃣ Consultar reservas de sala
+9️⃣ Ver reportes programados
+
+ℹ️ *INFORMACIÓN:*
+0️⃣ Ayuda y comandos disponibles
+
+*O escribe directamente:*
+• "proyectos" - Ver proyectos
+• "tareas" - Ver tareas
+• "reporte" - Ver reportes
+• "estadísticas" - Ver métricas`;
+
+            await message.reply(
+                `${greeting}\n\n${welcomeMsg}${menuPersonalizado}`
+            );
+            return;
+        }
         
         if (userRole === 'ceo') {
             greeting = '👔 Buenos días, estimado';
@@ -392,3 +533,281 @@ Escribe \`cancel\` para salir.`;
         return;
     }
 };
+
+// Funciones helper para jefes (Salma/Francisco)
+async function mostrarProyectosFuturos(message: Message) {
+    try {
+        const { ProjectModel } = await import('../crm/models/project.model');
+        const proyectos = await ProjectModel.find({ 
+            status: { $in: ['planned'] },
+            startDate: { $gte: new Date() }
+        }).sort({ startDate: 1 }).limit(10).lean();
+
+        if (proyectos.length === 0) {
+            await message.reply(`📋 No hay proyectos futuros planificados.`);
+            return;
+        }
+
+        let lista = `🔮 *Proyectos Futuros/Planificados*\n\n`;
+        proyectos.forEach((p: any) => {
+            lista += `📋 *${p.name}*\n`;
+            if (p.description) lista += `   ${p.description.substring(0, 50)}${p.description.length > 50 ? '...' : ''}\n`;
+            if (p.startDate) {
+                const fecha = new Date(p.startDate).toLocaleDateString('es-MX');
+                lista += `   📅 Inicio: ${fecha}\n`;
+            }
+            if (p.endDate) {
+                const fecha = new Date(p.endDate).toLocaleDateString('es-MX');
+                lista += `   🏁 Fin: ${fecha}\n`;
+            }
+            lista += `   📊 Progreso: ${p.progress || 0}% | Prioridad: ${p.priority || 'media'}\n\n`;
+        });
+
+        await message.reply(lista);
+    } catch (error: any) {
+        logger.error('Error mostrando proyectos futuros:', error);
+        await message.reply(`❌ Error al obtener proyectos futuros: ${error.message}`);
+    }
+}
+
+async function mostrarTareasActivas(message: Message) {
+    try {
+        const { TaskModel } = await import('../crm/models/task.model');
+        const tareas = await TaskModel.find({
+            status: { $in: ['todo', 'doing'] }
+        }).populate('projectId', 'name').sort({ updatedAt: -1 }).limit(15).lean();
+
+        if (tareas.length === 0) {
+            await message.reply(`✅ No hay tareas activas en este momento.`);
+            return;
+        }
+
+        let lista = `📋 *Tareas Activas*\n\n`;
+        tareas.forEach((t: any) => {
+            const statusEmoji = t.status === 'doing' ? '🚀' : '📋';
+            lista += `${statusEmoji} *${t.name}*\n`;
+            if (t.projectId && (t.projectId as any).name) {
+                lista += `   Proyecto: ${(t.projectId as any).name}\n`;
+            }
+            lista += `   Progreso: ${t.progress || 0}% | Status: ${t.status}\n`;
+            if (t.endDate) {
+                const fecha = new Date(t.endDate).toLocaleDateString('es-MX');
+                lista += `   📅 Fin: ${fecha}\n`;
+            }
+            lista += `\n`;
+        });
+
+        await message.reply(lista);
+    } catch (error: any) {
+        logger.error('Error mostrando tareas activas:', error);
+        await message.reply(`❌ Error al obtener tareas activas: ${error.message}`);
+    }
+}
+
+async function mostrarEstadisticasProyectos(message: Message) {
+    try {
+        const { ProjectModel } = await import('../crm/models/project.model');
+        const { TaskModel } = await import('../crm/models/task.model');
+        
+        const proyectos = await ProjectModel.find({}).lean();
+        const tareas = await TaskModel.find({}).lean();
+        
+        const proyectosActivos = proyectos.filter((p: any) => p.status === 'in_progress').length;
+        const proyectosPlanificados = proyectos.filter((p: any) => p.status === 'planned').length;
+        const proyectosPausados = proyectos.filter((p: any) => p.status === 'paused').length;
+        const proyectosCompletados = proyectos.filter((p: any) => p.status === 'done').length;
+        
+        let progresoTotal = 0;
+        let proyectosConProgreso = 0;
+        proyectos.forEach((p: any) => {
+            if (p.progress !== undefined && p.progress !== null) {
+                progresoTotal += p.progress;
+                proyectosConProgreso++;
+            }
+        });
+        const progresoPromedio = proyectosConProgreso > 0 ? Math.round(progresoTotal / proyectosConProgreso) : 0;
+        
+        const tareasCompletadas = tareas.filter((t: any) => t.status === 'done').length;
+        const tareasEnProgreso = tareas.filter((t: any) => t.status === 'doing').length;
+        const tareasPorHacer = tareas.filter((t: any) => t.status === 'todo').length;
+        
+        let progresoTareas = 0;
+        let tareasConProgreso = 0;
+        tareas.forEach((t: any) => {
+            if (t.progress !== undefined && t.progress !== null) {
+                progresoTareas += t.progress;
+                tareasConProgreso++;
+            }
+        });
+        const progresoTareasPromedio = tareasConProgreso > 0 ? Math.round(progresoTareas / tareasConProgreso) : 0;
+        
+        const estadisticas = `📊 *ESTADÍSTICAS DE PROYECTOS Y TAREAS*\n\n` +
+            `🚀 *PROYECTOS*\n` +
+            `• Total: ${proyectos.length}\n` +
+            `• En curso: ${proyectosActivos}\n` +
+            `• Planificados: ${proyectosPlanificados}\n` +
+            `• Pausados: ${proyectosPausados}\n` +
+            `• Completados: ${proyectosCompletados}\n` +
+            `• Progreso promedio: ${progresoPromedio}%\n\n` +
+            `📋 *TAREAS*\n` +
+            `• Total: ${tareas.length}\n` +
+            `• Por hacer: ${tareasPorHacer}\n` +
+            `• En progreso: ${tareasEnProgreso}\n` +
+            `• Completadas: ${tareasCompletadas}\n` +
+            `• Progreso promedio: ${progresoTareasPromedio}%`;
+        
+        await message.reply(estadisticas);
+    } catch (error: any) {
+        logger.error('Error mostrando estadísticas:', error);
+        await message.reply(`❌ Error al obtener estadísticas: ${error.message}`);
+    }
+}
+
+async function mostrarReporteSemanal(message: Message) {
+    try {
+        await message.reply(`📊 Generando reporte semanal...`);
+        
+        // Obtener fecha de inicio de semana (lunes)
+        const hoy = new Date();
+        const diaSemana = hoy.getDay();
+        const diasDesdeLunes = diaSemana === 0 ? 6 : diaSemana - 1;
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - diasDesdeLunes);
+        inicioSemana.setHours(0, 0, 0, 0);
+        
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(inicioSemana.getDate() + 6);
+        finSemana.setHours(23, 59, 59, 999);
+        
+        // Generar reporte usando el generador
+        const { generateReport } = await import('../utils/report-generator.util');
+        
+        // Crear configuración temporal para el reporte
+        const reporteConfig = {
+            reportType: 'full' as const,
+            dateRange: {
+                startDate: inicioSemana,
+                endDate: finSemana
+            },
+            includeMetrics: true,
+            filters: {},
+            name: 'Reporte Semanal',
+            recipients: { phoneNumbers: [] }
+        };
+        
+        const reporte = await generateReport(reporteConfig as any, (await message.getContact()).number);
+        await message.reply(reporte);
+    } catch (error: any) {
+        logger.error('Error mostrando reporte semanal:', error);
+        await message.reply(`❌ Error al generar reporte semanal: ${error.message}`);
+    }
+}
+
+async function mostrarMetricasIT(message: Message) {
+    try {
+        const { TicketModel } = await import('../crm/models/ticket.model');
+        
+        const ticketsAbiertos = await TicketModel.countDocuments({ status: 'open' });
+        const ticketsResueltos = await TicketModel.countDocuments({ status: 'resolved' });
+        const ticketsEnProgreso = await TicketModel.countDocuments({ status: 'in_progress' });
+        
+        const tickets = await TicketModel.find({}).lean();
+        const ticketsPorCategoria: Record<string, number> = {};
+        tickets.forEach((t: any) => {
+            const categoria = t.category || 'other';
+            ticketsPorCategoria[categoria] = (ticketsPorCategoria[categoria] || 0) + 1;
+        });
+        
+        let metricas = `📈 *MÉTRICAS IT GENERALES*\n\n` +
+            `🎫 *TICKETS*\n` +
+            `• Abiertos: ${ticketsAbiertos}\n` +
+            `• En progreso: ${ticketsEnProgreso}\n` +
+            `• Resueltos: ${ticketsResueltos}\n` +
+            `• Total: ${tickets.length}\n\n`;
+        
+        if (Object.keys(ticketsPorCategoria).length > 0) {
+            metricas += `📊 *Por Categoría:*\n`;
+            Object.entries(ticketsPorCategoria).forEach(([cat, count]) => {
+                const emoji: Record<string, string> = {
+                    'hardware': '💻',
+                    'software': '📱',
+                    'network': '🌐',
+                    'security': '🔒',
+                    'm365': '📧',
+                    'pos': '💳',
+                    'backup': '💾',
+                    'other': '📋'
+                };
+                metricas += `${emoji[cat] || '📋'} ${cat}: ${count}\n`;
+            });
+        }
+        
+        await message.reply(metricas);
+    } catch (error: any) {
+        logger.error('Error mostrando métricas IT:', error);
+        await message.reply(`❌ Error al obtener métricas: ${error.message}`);
+    }
+}
+
+async function mostrarReportesProgramados(message: Message) {
+    try {
+        const { ScheduledReportModel } = await import('../crm/models/scheduled-report.model');
+        const reportes = await ScheduledReportModel.find({ 'schedule.enabled': true })
+            .sort({ createdAt: -1 }).limit(10).lean();
+        
+        if (reportes.length === 0) {
+            await message.reply(`📋 No hay reportes programados activos.`);
+            return;
+        }
+        
+        let lista = `📅 *REPORTES PROGRAMADOS*\n\n`;
+        reportes.forEach((r: any, index: number) => {
+            lista += `${index + 1}. *${r.name}*\n`;
+            if (r.description) lista += `   ${r.description}\n`;
+            lista += `   Frecuencia: ${r.schedule.frequency === 'weekly' ? 'Semanal' : r.schedule.frequency === 'monthly' ? 'Mensual' : 'Una vez'}\n`;
+            if (r.nextSendAt) {
+                const fecha = new Date(r.nextSendAt).toLocaleDateString('es-MX', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                lista += `   Próximo envío: ${fecha}\n`;
+            }
+            lista += `   Destinatarios: ${r.recipients.phoneNumbers.length}\n\n`;
+        });
+        
+        await message.reply(lista);
+    } catch (error: any) {
+        logger.error('Error mostrando reportes programados:', error);
+        await message.reply(`❌ Error al obtener reportes programados: ${error.message}`);
+    }
+}
+
+async function mostrarAyudaJefe(message: Message, bossName: string, role: string) {
+    const ayuda = `ℹ️ *AYUDA Y COMANDOS DISPONIBLES - ${bossName.toUpperCase()}*\n\n` +
+        `*Rol:* ${role === 'ceo' ? 'CEO' : role === 'admin' ? 'Administrador' : 'Directivo'}\n\n` +
+        `📊 *MENÚ PRINCIPAL:*\n` +
+        `1️⃣ Proyectos en curso\n` +
+        `2️⃣ Proyectos futuros\n` +
+        `3️⃣ Tareas activas\n` +
+        `4️⃣ Estadísticas\n` +
+        `5️⃣ Reporte semanal\n` +
+        `6️⃣ Métricas IT\n` +
+        `7️⃣ Tickets abiertos\n` +
+        `8️⃣ Reservas de sala\n` +
+        `9️⃣ Reportes programados\n` +
+        `0️⃣ Esta ayuda\n\n` +
+        `*COMANDOS DIRECTOS:*\n` +
+        `• "proyectos" - Ver proyectos\n` +
+        `• "tareas" - Ver tareas\n` +
+        `• "reporte" - Reporte semanal\n` +
+        `• "estadísticas" - Métricas generales\n` +
+        `• "!proyectos actualizar [nombre] [%]" - Actualizar progreso\n` +
+        `• "!horarios" - Gestionar reservas\n` +
+        `• "!ticket" - Ver tickets`;
+    
+    await message.reply(ayuda);
+}
