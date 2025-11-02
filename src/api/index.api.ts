@@ -31,6 +31,12 @@ export default function (botManager: BotManager) {
     });
 
     router.get("/qr-status", (_req, res) => {
+        // Deshabilitar caché para este endpoint ya que el estado puede cambiar frecuentemente
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.json({ qrScanned: qrData.qrScanned, qrCodeData: qrData.qrCodeData });
     });
 
