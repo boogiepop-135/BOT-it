@@ -22,6 +22,7 @@ export class BotManager {
     private prefix = AppConfig.instance.getBotPrefix();
     private isPaused: boolean = false;
     private isReconnecting: boolean = false;
+    private offHoursMessageSent = new Map<string, number>(); // Map<phoneNumber, timestamp> para evitar spam de mensajes fuera de horario
 
     private constructor() {
         // El cliente se inicializará de forma asíncrona
@@ -335,6 +336,33 @@ export class BotManager {
         if (AppConfig.instance.getSupportedMessageTypes().indexOf(message.type) === -1) {
             return;
         }
+
+        // Verificar que el cliente esté completamente inicializado antes de procesar
+        if (!this.client || !this.client.info || !this.client.info.wid) {
+            logger.warn('Client not fully initialized, skipping message processing');
+            return;
+        }
+
+        // IMPORTANTE: Verificar si el mensaje es del propio bot ANTES de cualquier procesamiento
+        // Esto evita loops infinitos cuando el bot responde a sus propios mensajes
+        if (message.from === this.client.info.wid._serialized || message.isStatus) {
+            return;
+        }
+
+        // Verificar si es un mensaje del propio bot usando user.isMe
+        // Esto debe hacerse temprano para evitar procesar mensajes propios
+        let user;
+        try {
+            user = await message.getContact();
+        } catch (error) {
+            logger.error('Failed to get contact from message:', error);
+            return;
+        }
+
+        if (user && user.isMe) {
+            logger.debug('Message from bot itself, ignoring');
+            return;
+        }
         
         // Verificar si el bot está en pausa
         if (this.isPaused) {
@@ -352,16 +380,25 @@ export class BotManager {
                     return;
                 }
 
-                let user;
-                try {
-                    user = await message.getContact();
-                } catch (error) {
-                    logger.error('Failed to get contact from message:', error);
+                // user ya fue obtenido antes, reutilizarlo si está disponible
+                if (!user || !user.number) {
+                    logger.warn('Message without valid contact information');
                     return;
                 }
 
-                if (!user || !user.number) {
-                    logger.warn('Message without valid contact information');
+                // Verificar nuevamente que no sea mensaje propio
+                if (user.isMe) {
+                    logger.debug('Off-hours message from bot itself, ignoring');
+                    return;
+                }
+
+                // Verificar si ya se envió un mensaje de fuera de horario a este usuario en los últimos 5 minutos
+                const lastSentTime = this.offHoursMessageSent.get(user.number);
+                const now = Date.now();
+                const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutos en milisegundos
+                
+                if (lastSentTime && (now - lastSentTime) < FIVE_MINUTES) {
+                    logger.debug(`Off-hours message already sent to ${user.number} recently, skipping`);
                     return;
                 }
 
@@ -378,6 +415,9 @@ export class BotManager {
                 // Enviar mensaje de fuera de horario
                 const offHoursMessage = ScheduleUtil.getOffHoursMessage(userI18n.getLanguage());
                 await chat.sendMessage(offHoursMessage);
+                
+                // Guardar timestamp del mensaje enviado
+                this.offHoursMessageSent.set(user.number, now);
                 
                 logger.info(`Off-hours message sent to ${user.number}`);
                 return;
@@ -397,20 +437,7 @@ export class BotManager {
         }
 
         try {
-            let user;
-            try {
-                user = await message.getContact();
-            } catch (error) {
-                logger.error('Failed to get contact from message:', error);
-                logger.error('Message details:', {
-                    id: message.id?._serialized,
-                    from: message.from,
-                    type: message.type,
-                    body: message.body
-                });
-                return;
-            }
-
+            // user ya fue obtenido antes, verificar que esté disponible
             if (!user || !user.number) {
                 logger.warn('Message without valid contact information');
                 return;
@@ -431,20 +458,15 @@ export class BotManager {
 
             userI18n = this.getUserI18n(user.number);
 
-            if (!user.isMe) await this.trackContact(message, userI18n);
+            // Verificar nuevamente que no sea mensaje propio (por seguridad)
+            if (user.isMe) {
+                logger.debug('Message from bot itself (duplicate check), ignoring');
+                return;
+            }
+
+            await this.trackContact(message, userI18n);
             chat = await message.getChat();
 
-            // Verificar que el cliente esté completamente inicializado antes de verificar info
-            if (!this.client || !this.client.info || !this.client.info.wid) {
-                logger.warn('Client not fully initialized, skipping message processing');
-                return;
-            }
-
-            if (message.from === this.client.info.wid._serialized || message.isStatus) {
-                return;
-            }
-
-            // Procesar mensaje de forma secuencial para evitar problemas de concurrencia
             // Verificar nuevamente que el cliente esté listo antes de procesar
             if (!this.client || !this.client.info || !this.client.info.wid) {
                 logger.warn('Client disconnected during message processing, aborting');
