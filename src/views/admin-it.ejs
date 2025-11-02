@@ -48,25 +48,24 @@
     }
 
     // Guard: requerir token para acceder al panel
-    (function(){
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        window.location.replace('/admin/login');
+    // Declarar token en scope global para usar en todos los scripts
+    var token = localStorage.getItem('authToken');
+    if (!token) {
+      window.location.replace('/admin/login');
+    }
+    // Interceptor fetch para adjuntar Authorization por defecto y normalizar URLs
+    const _fetch = window.fetch;
+    window.fetch = (input, init = {}) => {
+      init.headers = init.headers || {};
+      if (!String(input).includes('/crm/auth/login')) {
+        init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
       }
-      // Interceptor fetch para adjuntar Authorization por defecto y normalizar URLs
-      const _fetch = window.fetch;
-      window.fetch = (input, init = {}) => {
-        init.headers = init.headers || {};
-        if (!String(input).includes('/crm/auth/login')) {
-          init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
-        }
-        // Normalizar URL si es relativa
-        const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
-          ? apiUrl(input) 
-          : input;
-        return _fetch(url, init);
-      };
-    })();
+      // Normalizar URL si es relativa
+      const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
+        ? apiUrl(input) 
+        : input;
+      return _fetch(url, init);
+    };
   </script>
   <script>
     // --- Gantt Logic ---
@@ -79,8 +78,7 @@
     const taskMsg = document.getElementById('taskMsg');
     let gantt = null;
     
-    // Obtener token del localStorage para usar en las peticiones
-    const token = localStorage.getItem('authToken') || '';
+    // Token ya está declarado globalmente arriba, no redeclarar
 
     async function fetchJSON(url, options={}) {
       const res = await fetch(url, options);
@@ -1155,8 +1153,7 @@
   </div>
 
   <script>
-    // Check authentication
-    const token = localStorage.getItem('authToken');
+    // Check authentication - token ya está declarado arriba, solo verificar
     if (!token) {
       window.location.href = '/admin/login';
     }

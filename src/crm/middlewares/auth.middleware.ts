@@ -44,6 +44,14 @@ export const authorizePermission = (resource: string, action: 'read' | 'write' |
     const role = req.user?.role;
     if (!role) return res.status(401).json({ error: 'Authentication required' });
     const perms = ROLE_PERMISSIONS[role] || {};
+    
+    // Verificar si tiene permiso para todo ('*')
+    const hasWildcardManage = perms['*']?.includes('manage');
+    if (hasWildcardManage) {
+      return next(); // Admin/CEO tiene acceso a todo
+    }
+    
+    // Verificar permiso específico del recurso
     const allowed = perms[resource]?.includes(action) || perms[resource]?.includes('manage');
     if (!allowed) return res.status(403).json({ error: 'Forbidden' });
     next();
