@@ -78,6 +78,9 @@
     const taskForm = document.getElementById('taskForm');
     const taskMsg = document.getElementById('taskMsg');
     let gantt = null;
+    
+    // Obtener token del localStorage para usar en las peticiones
+    const token = localStorage.getItem('authToken') || '';
 
     async function fetchJSON(url, options={}) {
       const res = await fetch(url, options);
@@ -86,14 +89,25 @@
     }
 
     async function loadProjectsForGantt() {
-      const projects = await fetchJSON('/crm/projects');
-      projectSelect.innerHTML = '';
-      projects.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p._id; opt.textContent = p.name;
-        projectSelect.appendChild(opt);
-      });
-      if (projects.length) await renderGantt(projects[0]._id);
+      try {
+        const projects = await fetchJSON('/crm/projects', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (projectSelect) {
+          projectSelect.innerHTML = '';
+          projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p._id; opt.textContent = p.name;
+            projectSelect.appendChild(opt);
+          });
+          if (projects.length) await renderGantt(projects[0]._id);
+        }
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        if (projectSelect) {
+          projectSelect.innerHTML = '<option>Error al cargar proyectos</option>';
+        }
+      }
     }
 
     function toDateOnly(d){
@@ -107,8 +121,11 @@
     let currentTasks = [];
 
     async function renderGantt(projectId){
-      const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`);
-      currentTasks = tasks;
+      try {
+        const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        currentTasks = tasks;
       const data = tasks.map(t => ({
         id: t._id,
         name: t.name,
@@ -137,12 +154,20 @@
       
       await loadTasksList(projectId);
       updateDependenciesSelectors();
+      } catch (error) {
+        console.error('Error rendering Gantt:', error);
+        const el = document.getElementById('gantt');
+        if (el) el.innerHTML = '<p class="text-red-500 p-4">Error al cargar tareas</p>';
+      }
     }
 
     async function loadTasksList(projectId) {
       const tasksList = document.getElementById('tasksList');
       if (!tasksList) return;
-      const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`);
+      try {
+        const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
       tasksList.innerHTML = '';
       if (tasks.length === 0) {
         tasksList.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No hay tareas en este proyecto</p>';
@@ -232,6 +257,10 @@
         groupDiv.appendChild(tasksContainer);
         tasksList.appendChild(groupDiv);
       });
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+        tasksList.innerHTML = '<p class="text-red-500 text-sm text-center py-4">Error al cargar tareas</p>';
+      }
     }
     
     function generateProgressBar(progress) {
@@ -278,7 +307,12 @@
         };
         if (!body.name) throw new Error('Nombre requerido');
         await fetchJSON(`/crm/projects/${projectSelect.value}/tasks`, {
-          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+          method:'POST', 
+          headers:{
+            'Content-Type':'application/json',
+            'Authorization': `Bearer ${token}`
+          }, 
+          body: JSON.stringify(body)
         });
         taskForm.reset();
         await renderGantt(projectSelect.value);
@@ -304,7 +338,14 @@
           progress: progressValue ? parseInt(progressValue) : 0
         };
         if (!body.name) throw new Error('Nombre requerido');
-        await fetchJSON('/crm/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        await fetchJSON('/crm/projects', { 
+          method:'POST', 
+          headers:{
+            'Content-Type':'application/json',
+            'Authorization': `Bearer ${token}`
+          }, 
+          body: JSON.stringify(body) 
+        });
         projectForm.reset();
         document.getElementById('projProgress').value = '0';
         await loadProjectsForGantt();
@@ -343,7 +384,10 @@
       const taskId = document.getElementById('editTaskId').value;
       if (taskId && confirm('¿Estás seguro de eliminar esta tarea?')) {
         try {
-          await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { method: 'DELETE' });
+          await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { 
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
           closeTaskEditModal();
           await renderGantt(projectSelect.value);
         } catch(err) {
@@ -380,7 +424,10 @@
         if (!body.name) throw new Error('Nombre requerido');
         await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify(body)
         });
         closeTaskEditModal();
@@ -666,14 +713,31 @@
       <div class="mt-6 bg-white rounded-lg shadow p-4">
         <h3 class="text-lg font-semibold mb-3">Nueva tarea</h3>
         <form id="taskForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
-          <input id="taskName" class="border rounded px-3 py-2" placeholder="Nombre tarea" required />
-          <input id="taskStart" type="date" class="border rounded px-3 py-2" required />
-          <input id="taskEnd" type="date" class="border rounded px-3 py-2" required />
-          <input id="taskProgress" type="number" min="0" max="100" value="0" class="border rounded px-3 py-2" placeholder="Progreso %" />
-          <select id="taskDependencies" multiple class="border rounded px-3 py-2" title="Mantén Ctrl para seleccionar múltiples">
-            <option value="">Sin dependencias</option>
-          </select>
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Crear</button>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Nombre de la tarea</label>
+            <input id="taskName" class="w-full border rounded px-3 py-2" placeholder="Ej: Configurar servidor" required />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Fecha de inicio</label>
+            <input id="taskStart" type="date" class="w-full border rounded px-3 py-2" required />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Fecha de fin</label>
+            <input id="taskEnd" type="date" class="w-full border rounded px-3 py-2" required />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Progreso (%)</label>
+            <input id="taskProgress" type="number" min="0" max="100" value="0" class="w-full border rounded px-3 py-2" placeholder="0-100" title="Porcentaje de completado de la tarea (0-100)" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Tareas dependientes</label>
+            <select id="taskDependencies" multiple class="w-full border rounded px-3 py-2" title="Mantén Ctrl/Cmd para seleccionar múltiples. Estas tareas deben completarse antes de iniciar esta.">
+              <option value="">Sin dependencias</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Crear</button>
+          </div>
         </form>
         <p id="taskMsg" class="text-sm text-red-600 h-5 mt-2"></p>
       </div>
@@ -688,13 +752,27 @@
       <div class="mt-6 bg-white rounded-lg shadow p-4">
         <h3 class="text-lg font-semibold mb-3">Nuevo proyecto</h3>
         <form id="projectForm" class="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input id="projName" class="border rounded px-3 py-2" placeholder="Nombre del proyecto" required />
-          <input id="projStart" type="date" class="border rounded px-3 py-2" />
-          <input id="projEnd" type="date" class="border rounded px-3 py-2" />
-          <input id="projProgress" type="number" min="0" max="100" value="0" class="border rounded px-3 py-2" placeholder="Progreso %" />
-          <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded">
-            <i class="fas fa-plus mr-2"></i>Crear proyecto
-          </button>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Nombre del proyecto</label>
+            <input id="projName" class="w-full border rounded px-3 py-2" placeholder="Ej: Migración a M365" required />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Fecha de inicio</label>
+            <input id="projStart" type="date" class="w-full border rounded px-3 py-2" title="Fecha en que inicia el proyecto" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Fecha de fin</label>
+            <input id="projEnd" type="date" class="w-full border rounded px-3 py-2" title="Fecha esperada de finalización del proyecto" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Progreso (%)</label>
+            <input id="projProgress" type="number" min="0" max="100" value="0" class="w-full border rounded px-3 py-2" placeholder="0-100" title="Porcentaje de completado del proyecto (0-100)" />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded">
+              <i class="fas fa-plus mr-2"></i>Crear proyecto
+            </button>
+          </div>
         </form>
         <p id="projMsg" class="text-sm text-red-600 h-5 mt-2"></p>
       </div>
@@ -709,25 +787,30 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-              <input id="editTaskName" type="text" class="w-full border rounded px-3 py-2" required />
+              <input id="editTaskName" type="text" class="w-full border rounded px-3 py-2" placeholder="Nombre descriptivo de la tarea" required />
+              <p class="text-xs text-gray-500 mt-1">Nombre que identifica claramente la tarea</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Progreso (%)</label>
-              <input id="editTaskProgress" type="number" min="0" max="100" class="w-full border rounded px-3 py-2" />
+              <input id="editTaskProgress" type="number" min="0" max="100" class="w-full border rounded px-3 py-2" placeholder="0-100" />
+              <p class="text-xs text-gray-500 mt-1">Porcentaje de completado de la tarea (0-100)</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
               <input id="editTaskStart" type="date" class="w-full border rounded px-3 py-2" required />
+              <p class="text-xs text-gray-500 mt-1">Fecha en que inicia el trabajo de esta tarea</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
               <input id="editTaskEnd" type="date" class="w-full border rounded px-3 py-2" required />
+              <p class="text-xs text-gray-500 mt-1">Fecha esperada de finalización de la tarea</p>
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Dependencias</label>
-              <select id="editTaskDependencies" multiple class="w-full border rounded px-3 py-2" title="Mantén Ctrl para seleccionar múltiples">
+              <select id="editTaskDependencies" multiple class="w-full border rounded px-3 py-2" title="Mantén Ctrl/Cmd para seleccionar múltiples">
                 <option value="">Sin dependencias</option>
               </select>
+              <p class="text-xs text-gray-500 mt-1">Tareas que deben completarse antes de iniciar esta. Mantén Ctrl/Cmd para seleccionar múltiples.</p>
             </div>
           </div>
           <div class="flex justify-end space-x-3 mt-6">
@@ -2016,8 +2099,12 @@
     
     function updateBotControlButton(isPaused) {
       const btn = document.getElementById('bot-control-btn');
+      if (!btn) return; // Botón no existe, salir sin error
+      
       const text = document.getElementById('bot-control-text');
       const icon = btn.querySelector('i');
+      
+      if (!icon || !text) return; // Elementos no existen, salir sin error
       
       if (isPaused) {
         btn.className = 'px-4 py-2 rounded-lg font-medium transition flex items-center bg-green-600 hover:bg-green-700 text-white';
@@ -2070,8 +2157,13 @@
       }
     }
     
-    // Check bot status on load
-    checkBotStatus();
+    // Check bot status on load - después de que se cargue el DOM
+    setTimeout(() => {
+      const btn = document.getElementById('bot-control-btn');
+      if (btn) {
+        checkBotStatus();
+      }
+    }, 500);
     
     // User management functions - Make them globally available
     window.viewUserDetails = function(userId) {
