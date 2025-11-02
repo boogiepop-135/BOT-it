@@ -233,16 +233,15 @@ router.post('/scheduled-reports/:id/send', authenticate, authorizeRoles(ROLES.CE
             return res.status(404).json({ error: 'Report not found' });
         }
         
-        // Generar y enviar reporte
-        const reportText = await generateReport(report);
-        
-        // Enviar a todos los destinatarios
+        // Generar y enviar reporte personalizado para cada destinatario
         const botManager: BotManager = req.app.get('botManager');
         const sentTo: string[] = [];
         
         for (const phoneNumber of report.recipients.phoneNumbers) {
             try {
-                await botManager.sendMessageToUser(phoneNumber, reportText);
+                // Generar reporte personalizado para cada destinatario
+                const personalizedReport = await generateReport(report, phoneNumber);
+                await botManager.sendMessageToUser(phoneNumber, personalizedReport);
                 sentTo.push(phoneNumber);
             } catch (error) {
                 logger.error(`Failed to send report to ${phoneNumber}:`, error);

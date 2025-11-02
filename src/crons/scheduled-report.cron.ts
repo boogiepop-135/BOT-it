@@ -75,13 +75,15 @@ async function sendScheduledReport(botManager: BotManager, report: any) {
         // Generar el reporte
         const reportText = await generateReport(report);
 
-        // Enviar a todos los destinatarios
+        // Enviar a todos los destinatarios con personalización
         const sentTo: string[] = [];
         const failed: string[] = [];
 
         for (const phoneNumber of report.recipients.phoneNumbers) {
             try {
-                await botManager.sendMessageToUser(phoneNumber, reportText);
+                // Generar reporte personalizado para cada destinatario
+                const personalizedReport = await generateReport(report, phoneNumber);
+                await botManager.sendMessageToUser(phoneNumber, personalizedReport);
                 sentTo.push(phoneNumber);
                 logger.info(`Report sent successfully to ${phoneNumber}`);
             } catch (error) {

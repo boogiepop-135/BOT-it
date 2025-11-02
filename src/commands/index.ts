@@ -17,6 +17,7 @@ export default {
     tarjeta: require("./tarjeta.command"),
     ticket: require("./ticket.command"),
     horarios: require("./horarios.command"),
+    proyectos: require("./proyectos.command"),
     pause: require("./pause.command"),
     stop: require("./stop.command"),
     start: require("./start.command")

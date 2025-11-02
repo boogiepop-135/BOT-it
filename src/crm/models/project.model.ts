@@ -8,6 +8,7 @@ export interface IProject extends Document {
 	members?: Types.ObjectId[];
 	startDate?: Date;
 	endDate?: Date;
+	progress?: number; // 0..100
 	budget?: number;
 	tags?: string[];
 }
@@ -20,6 +21,7 @@ const ProjectSchema = new Schema<IProject>({
 	members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 	startDate: Date,
 	endDate: Date,
+	progress: { type: Number, default: 0, min: 0, max: 100 },
 	budget: Number,
 	tags: [String]
 }, { timestamps: true });

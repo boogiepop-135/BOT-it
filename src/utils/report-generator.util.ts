@@ -1,6 +1,8 @@
 import { TicketModel } from '../crm/models/ticket.model';
 import { ContactModel } from '../crm/models/contact.model';
 import { FeedbackModel } from '../crm/models/feedback.model';
+import { ProjectModel } from '../crm/models/project.model';
+import { TaskModel } from '../crm/models/task.model';
 import { IScheduledReport } from '../crm/models/scheduled-report.model';
 import logger from '../configs/logger.config';
 
@@ -29,6 +31,20 @@ export interface ReportData {
         };
         list: any[];
     };
+    projects?: {
+        total: number;
+        byStatus: Record<string, number>;
+        active: any[];
+        progressAverage: number;
+    };
+    tasks?: {
+        total: number;
+        byStatus: Record<string, number>;
+        byProject: Record<string, number>;
+        completed: number;
+        inProgress: any[];
+        progressAverage: number;
+    };
     metrics?: {
         totalContacts: number;
         newContacts: number;
@@ -40,12 +56,12 @@ export interface ReportData {
 /**
  * Genera un reporte basado en la configuración programada
  */
-export async function generateReport(reportConfig: IScheduledReport): Promise<string> {
+export async function generateReport(reportConfig: IScheduledReport, recipientPhone?: string): Promise<string> {
     try {
         const { startDate, endDate } = reportConfig.dateRange;
         const reportData = await gatherReportData(startDate, endDate, reportConfig);
 
-        return formatReport(reportData, reportConfig);
+        return formatReport(reportData, reportConfig, recipientPhone);
     } catch (error) {
         logger.error('Error generating report:', error);
         throw error;
@@ -132,6 +148,80 @@ async function gatherReportData(
         }
     };
 
+    // Incluir proyectos y tareas - Mejorado para mostrar progreso
+    const projects = await ProjectModel.find({
+        $or: [
+            { createdAt: { $gte: startDate, $lte: endDate } },
+            { updatedAt: { $gte: startDate, $lte: endDate } }
+        ]
+    }).lean();
+
+    const projectsByStatus: Record<string, number> = {};
+    let totalProgress = 0;
+    let projectsWithProgress = 0;
+
+    projects.forEach((project: any) => {
+        projectsByStatus[project.status] = (projectsByStatus[project.status] || 0) + 1;
+        
+        // Calcular progreso promedio
+        if (project.progress !== undefined && project.progress !== null) {
+            totalProgress += project.progress;
+            projectsWithProgress++;
+        }
+    });
+
+    const activeProjects = projects.filter((p: any) => 
+        p.status === 'in_progress' || p.status === 'planned'
+    );
+
+    reportData.projects = {
+        total: projects.length,
+        byStatus: projectsByStatus,
+        active: activeProjects,
+        progressAverage: projectsWithProgress > 0 ? Math.round(totalProgress / projectsWithProgress) : 0
+    };
+
+    // Incluir tareas
+    const tasks = await TaskModel.find({
+        $or: [
+            { createdAt: { $gte: startDate, $lte: endDate } },
+            { updatedAt: { $gte: startDate, $lte: endDate } }
+        ]
+    }).populate('projectId', 'name').lean();
+
+    const tasksByStatus: Record<string, number> = {};
+    const tasksByProject: Record<string, number> = {};
+    let totalTaskProgress = 0;
+    let tasksWithProgress = 0;
+
+    tasks.forEach((task: any) => {
+        tasksByStatus[task.status] = (tasksByStatus[task.status] || 0) + 1;
+        
+        if (task.projectId && task.projectId.name) {
+            const projectName = task.projectId.name;
+            tasksByProject[projectName] = (tasksByProject[projectName] || 0) + 1;
+        }
+
+        if (task.progress !== undefined && task.progress !== null) {
+            totalTaskProgress += task.progress;
+            tasksWithProgress++;
+        }
+    });
+
+    const completedTasks = tasks.filter((t: any) => t.status === 'done').length;
+    const inProgressTasks = tasks.filter((t: any) => 
+        t.status === 'doing' || (t.status === 'todo' && t.progress && t.progress > 0)
+    );
+
+    reportData.tasks = {
+        total: tasks.length,
+        byStatus: tasksByStatus,
+        byProject: tasksByProject,
+        completed: completedTasks,
+        inProgress: inProgressTasks.slice(0, 10), // Limitar a 10
+        progressAverage: tasksWithProgress > 0 ? Math.round(totalTaskProgress / tasksWithProgress) : 0
+    };
+
     // Métricas adicionales si se solicitan
     if (config.includeMetrics) {
         const totalContacts = await ContactModel.countDocuments({
@@ -164,56 +254,112 @@ async function gatherReportData(
 }
 
 /**
- * Formatea el reporte en texto legible
+ * Obtener nombre del destinatario desde número de teléfono
+ * Puedes configurar aquí los números específicos de tus jefes
  */
-function formatReport(data: ReportData, config: IScheduledReport): string {
+function getRecipientName(phoneNumber: string): string | null {
+    // Normalizar número (remover caracteres especiales)
+    const phoneNormalized = phoneNumber.replace(/[^0-9]/g, '');
+    
+    // Mapeo de números de teléfono específicos a nombres
+    // CONFIGURA AQUÍ LOS NÚMEROS DE TUS JEFES
+    const recipients: Record<string, string> = {
+        // Ejemplo: Si el número de Salma es 5214421056597
+        // '5214421056597': 'Salma',
+        // '5214421056598': 'Francisco',
+        // Agregar números reales aquí
+        
+        // Búsqueda por palabras clave en el número
+        // (útil si los números tienen algún patrón)
+    };
+    
+    // Buscar por número exacto
+    if (recipients[phoneNormalized]) {
+        return recipients[phoneNormalized];
+    }
+    
+    // Buscar por palabras clave (si el número contiene algún identificador)
+    const phoneLower = phoneNumber.toLowerCase().replace(/[^0-9a-z]/g, '');
+    const keywords: Record<string, string> = {
+        'salma': 'Salma',
+        'francisco': 'Francisco',
+        'franco': 'Francisco',
+        'frank': 'Francisco'
+    };
+    
+    for (const [key, name] of Object.entries(keywords)) {
+        if (phoneLower.includes(key)) {
+            return name;
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Generar mensaje personalizado según el destinatario
+ */
+function getPersonalizedGreeting(phoneNumber: string, startDateStr: string, endDateStr: string): string {
+    const recipientName = getRecipientName(phoneNumber);
+    
+    if (recipientName === 'Salma') {
+        return `👋 *Hola Salma!*\n\n📊 *Reporte Semanal de IT*\n\n*Período:* ${startDateStr} - ${endDateStr}\n\nAquí tienes un resumen del trabajo realizado esta semana en el área de IT:`;
+    } else if (recipientName === 'Francisco') {
+        return `👋 *Hola Francisco!*\n\n📊 *Reporte Semanal de IT*\n\n*Período:* ${startDateStr} - ${endDateStr}\n\nTe comparto el resumen semanal de actividades del área de IT:`;
+    }
+    
+    return `📊 *REPORTE AUTOMÁTICO - SAN COSME ORGÁNICO*\n\n*Período:* ${startDateStr} - ${endDateStr}`;
+}
+
+/**
+ * Formatea el reporte en texto legible con personalización
+ */
+function formatReport(data: ReportData, config: IScheduledReport, recipientPhone?: string): string {
     const startDateStr = data.period.startDate.toLocaleDateString('es-MX');
     const endDateStr = data.period.endDate.toLocaleDateString('es-MX');
 
-    let report = `
-📊 *REPORTE AUTOMÁTICO - SAN COSME ORGÁNICO*
+    // Usar el primer número de teléfono si hay múltiples
+    const phoneNumber = recipientPhone || (config.recipients?.phoneNumbers?.[0] || '');
+    
+    let report = getPersonalizedGreeting(phoneNumber, startDateStr, endDateStr);
+    
+    report += `\n*Tipo:* ${config.reportType === 'tickets' ? 'Solo Tickets' : config.reportType === 'full' ? 'Completo' : 'Personalizado'}\n`;
+    report += `${config.name ? `*Nombre del Reporte:* ${config.name}\n` : ''}`;
 
-*Período:* ${startDateStr} - ${endDateStr}
-*Tipo:* ${config.reportType === 'tickets' ? 'Solo Tickets' : config.reportType === 'full' ? 'Completo' : 'Personalizado'}
-
-${config.name ? `*Nombre del Reporte:* ${config.name}\n` : ''}
-
-📋 *TICKETS* 🎫
-
-📈 *Resumen General*
-• Total de tickets: *${data.tickets.total}*
-• Tickets resueltos: *${data.tickets.resolved}*
-• Tiempo promedio de resolución: *${data.tickets.resolutionTime.average} minutos*
-
-📊 *Por Estado*
-${Object.entries(data.tickets.byStatus).map(([status, count]) => {
-    const emoji = {
-        'open': '🟢',
-        'assigned': '🟡',
-        'in_progress': '🟠',
-        'resolved': '✅',
-        'closed': '✔️'
-    }[status] || '📝';
-    return `${emoji} ${status}: *${count}*`;
-}).join('\n')}
-
-🔥 *Por Prioridad*
-${Object.entries(data.tickets.byPriority).map(([priority, count]) => {
-    const emoji = {
-        'low': '🟢',
-        'medium': '🟡',
-        'high': '🟠',
-        'urgent': '🔴'
-    }[priority] || '📝';
-    return `${emoji} ${priority}: *${count}*`;
-}).join('\n')}
-
-📦 *Por Categoría*
-${Object.entries(data.tickets.byCategory).map(([category, count]) => `• ${category}: *${count}*`).join('\n')}
-
-🏢 *Por Sucursal*
-${Object.entries(data.tickets.bySucursal).map(([sucursal, count]) => `• ${sucursal}: *${count}*`).join('\n')}
-`;
+    report += `\n📋 *TICKETS* 🎫\n\n`;
+    report += `📈 *Resumen General*\n`;
+    report += `• Total de tickets: *${data.tickets.total}*\n`;
+    report += `• Tickets resueltos: *${data.tickets.resolved}*\n`;
+    report += `• Tiempo promedio de resolución: *${data.tickets.resolutionTime.average} minutos*\n\n`;
+    
+    report += `📊 *Por Estado*\n`;
+    report += Object.entries(data.tickets.byStatus).map(([status, count]) => {
+        const emoji = {
+            'open': '🟢',
+            'assigned': '🟡',
+            'in_progress': '🟠',
+            'resolved': '✅',
+            'closed': '✔️'
+        }[status] || '📝';
+        return `${emoji} ${status}: *${count}*`;
+    }).join('\n');
+    
+    report += `\n\n🔥 *Por Prioridad*\n`;
+    report += Object.entries(data.tickets.byPriority).map(([priority, count]) => {
+        const emoji = {
+            'low': '🟢',
+            'medium': '🟡',
+            'high': '🟠',
+            'urgent': '🔴'
+        }[priority] || '📝';
+        return `${emoji} ${priority}: *${count}*`;
+    }).join('\n');
+    
+    report += `\n\n📦 *Por Categoría*\n`;
+    report += Object.entries(data.tickets.byCategory).map(([category, count]) => `• ${category}: *${count}*`).join('\n');
+    
+    report += `\n\n🏢 *Por Sucursal*\n`;
+    report += Object.entries(data.tickets.bySucursal).map(([sucursal, count]) => `• ${sucursal}: *${count}*`).join('\n');
 
     // Agregar métricas adicionales si están disponibles
     if (data.metrics) {
@@ -231,10 +377,118 @@ ${Object.entries(data.tickets.bySucursal).map(([sucursal, count]) => `• ${sucu
 `;
     }
 
+    // Sección de PROYECTOS mejorada
+    if (data.projects && data.projects.total > 0) {
+        report += `\n\n🚀 *PROYECTOS EN CURSO*\n\n`;
+        report += `📊 *Resumen General*\n`;
+        report += `• Total de proyectos: *${data.projects.total}*\n`;
+        report += `• Proyectos activos: *${data.projects.active.length}*\n\n`;
+        
+        report += `📈 *Por Estado*\n`;
+        Object.entries(data.projects.byStatus).forEach(([status, count]) => {
+            const statusEmoji = {
+                'planned': '📋',
+                'in_progress': '🚀',
+                'paused': '⏸️',
+                'done': '✅'
+            }[status] || '📝';
+            const statusName = {
+                'planned': 'Planificados',
+                'in_progress': 'En Progreso',
+                'paused': 'Pausados',
+                'done': 'Completados'
+            }[status] || status;
+            report += `${statusEmoji} ${statusName}: *${count}*\n`;
+        });
+
+        // Mostrar proyectos activos con detalles y progreso
+        if (data.projects.active.length > 0) {
+            report += `\n🎯 *Proyectos Activos:*\n`;
+            data.projects.active.slice(0, 5).forEach((project: any) => {
+                const statusEmoji = {
+                    'planned': '📋',
+                    'in_progress': '🚀',
+                    'paused': '⏸️'
+                }[project.status] || '📝';
+                
+                report += `${statusEmoji} *${project.name}*\n`;
+                if (project.description) {
+                    report += `   ${project.description.substring(0, 60)}${project.description.length > 60 ? '...' : ''}\n`;
+                }
+                
+                // Mostrar progreso si está disponible
+                if (project.progress !== undefined && project.progress !== null) {
+                    const barra = generateProgressBar(project.progress);
+                    report += `   📊 Progreso: ${barra} ${project.progress}%\n`;
+                }
+                
+                const statusName = {
+                    'planned': 'Planificado',
+                    'in_progress': 'En Progreso',
+                    'paused': 'Pausado'
+                }[project.status] || project.status;
+                
+                report += `   Estado: ${statusName} | Prioridad: ${project.priority || 'media'}\n\n`;
+            });
+            
+            // Mostrar promedio de progreso si hay proyectos con progreso
+            if (data.projects.progressAverage > 0) {
+                report += `📊 *Progreso promedio:* ${data.projects.progressAverage}%\n`;
+            }
+        }
+    }
+
+    // Sección de TAREAS mejorada
+    if (data.tasks && data.tasks.total > 0) {
+        report += `\n\n✅ *TAREAS Y ACTIVIDADES*\n\n`;
+        report += `📊 *Resumen General*\n`;
+        report += `• Total de tareas: *${data.tasks.total}*\n`;
+        report += `• Tareas completadas: *${data.tasks.completed}*\n`;
+        report += `• Tareas en progreso: *${data.tasks.inProgress.length}*\n`;
+        report += `• Progreso promedio: *${data.tasks.progressAverage}%*\n\n`;
+        
+        report += `📈 *Por Estado*\n`;
+        Object.entries(data.tasks.byStatus).forEach(([status, count]) => {
+            const statusEmoji = {
+                'todo': '📋',
+                'doing': '🚀',
+                'blocked': '🚫',
+                'done': '✅'
+            }[status] || '📝';
+            const statusName = {
+                'todo': 'Pendientes',
+                'doing': 'En Progreso',
+                'blocked': 'Bloqueadas',
+                'done': 'Completadas'
+            }[status] || status;
+            report += `${statusEmoji} ${statusName}: *${count}*\n`;
+        });
+
+        // Mostrar tareas en progreso con progreso
+        if (data.tasks.inProgress.length > 0) {
+            report += `\n🚀 *Tareas en Progreso:*\n`;
+            data.tasks.inProgress.slice(0, 8).forEach((task: any) => {
+                const progressBar = generateProgressBar(task.progress || 0);
+                const projectName = task.projectId?.name || 'Sin proyecto';
+                report += `\n📋 *${task.name}*\n`;
+                report += `   Proyecto: ${projectName}\n`;
+                report += `   Progreso: ${progressBar} ${task.progress || 0}%\n`;
+            });
+        }
+
+        // Tareas por proyecto
+        if (Object.keys(data.tasks.byProject).length > 0) {
+            report += `\n📦 *Tareas por Proyecto:*\n`;
+            Object.entries(data.tasks.byProject).slice(0, 5).forEach(([projectName, count]) => {
+                report += `• ${projectName}: *${count}* tareas\n`;
+            });
+        }
+    }
+
     // Lista de tickets si es reporte completo
     if (config.reportType === 'full' && data.tickets.list.length > 0) {
-        report += `\n📋 *Últimos Tickets*\n`;
-        data.tickets.list.slice(0, 10).forEach((ticket: any) => {
+        report += `\n\n📋 *ÚLTIMOS TICKETS*\n`;
+        data.tickets.list.slice(0, 8).forEach((ticket: any) => {
             const statusEmoji = {
                 'open': '🟢',
                 'assigned': '🟡',
@@ -248,12 +502,25 @@ ${Object.entries(data.tickets.bySucursal).map(([sucursal, count]) => `• ${sucu
         });
     }
 
-    report += `\n---
-🤖 *Reporte generado automáticamente*
-💻 Programado por: Levi Eduardo
-🏢 San Cosme Orgánico - Automatización Integral
-`;
+    // Mensaje de cierre personalizado
+    const recipientName = getRecipientName(phoneNumber);
+    if (recipientName === 'Salma') {
+        report += `\n---\n💼 *Cualquier pregunta o seguimiento que necesites, estoy a tus órdenes.*\n\n🤖 Reporte generado automáticamente por Levi Eduardo\n🏢 San Cosme Orgánico - Área IT`;
+    } else if (recipientName === 'Francisco') {
+        report += `\n---\n💼 *Si necesitas más detalles o seguimiento de algún tema, con gusto te ayudo.*\n\n🤖 Reporte generado automáticamente por Levi Eduardo\n🏢 San Cosme Orgánico - Área IT`;
+    } else {
+        report += `\n---\n🤖 *Reporte generado automáticamente*\n💻 Programado por: Levi Eduardo\n🏢 San Cosme Orgánico - Automatización Integral`;
+    }
 
     return report;
+}
+
+/**
+ * Generar barra de progreso visual
+ */
+function generateProgressBar(progress: number): string {
+    const filled = Math.round(progress / 10);
+    const empty = 10 - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
