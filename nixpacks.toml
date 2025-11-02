@@ -1,0 +1,17 @@
+[providers]
+node = "18.x"
+
+[phases.setup]
+nixPkgs = ["nodejs-18_x"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["npm install"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node build/index.js"
+
