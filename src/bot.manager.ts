@@ -8,7 +8,6 @@ import { isUrl } from "./utils/common.util";
 import { identifySocialNetwork, YtDlpDownloader } from "./utils/get.util";
 import { onboard } from "./utils/onboarding.util";
 import { ContactModel } from "./crm/models/contact.model";
-import { ScheduleUtil } from "./utils/schedule.util";
 const qrcode = require('qrcode-terminal');
 
 export class BotManager {

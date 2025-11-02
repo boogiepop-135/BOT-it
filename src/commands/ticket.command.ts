@@ -199,7 +199,7 @@ async function createTicket(message: Message, args: string[], contact: any, chat
             'other': '📋'
         };
         
-        // Verificar si es fuera de horario para agregar aviso
+        // Bot siempre atiende, solo avisar sobre horario de IT
         const isBusinessHours = ScheduleUtil.isBusinessHours();
         let response = `✅ *Ticket creado exitosamente*
 
@@ -212,7 +212,7 @@ ${priorityEmoji[priority]} Prioridad: ${priority}
 
 Tu ticket ha sido registrado y será atendido por el equipo de IT.`;
 
-        // Agregar aviso si es fuera de horario
+        // Agregar aviso solo sobre horario de IT si es fuera de horario
         if (!isBusinessHours) {
             const nextBusinessHours = ScheduleUtil.getNextBusinessHours();
             const nextDate = nextBusinessHours.toLocaleString('es-MX', { 
@@ -225,7 +225,7 @@ Tu ticket ha sido registrado y será atendido por el equipo de IT.`;
                 timeZone: 'America/Mexico_City'
             });
             
-            response += `\n\n⏰ *Aviso:* Fuera de horario de atención. Tu ticket será atendido en el siguiente horario hábil de IT (Lunes a Viernes, 9 AM - 5 PM) a partir del ${nextDate}.`;
+            response += `\n\n⏰ *Aviso:* El equipo de IT atenderá en horario hábil (Lunes a Viernes, 9 AM - 5 PM). Atención estimada a partir del ${nextDate}.`;
         }
         
         await message.reply(response);
@@ -630,7 +630,7 @@ async function createTicketFromConversation(message: Message, conversation: Tick
             'other': '📋'
         };
         
-        // Verificar si es fuera de horario para agregar aviso
+        // Bot siempre atiende, solo avisar sobre horario de IT
         const isBusinessHours = ScheduleUtil.isBusinessHours();
         let response = `✅ *Ticket creado exitosamente*
 
@@ -644,7 +644,7 @@ ${priorityEmoji[priority]} Prioridad: ${priority}
 ✅ Tu ticket ha sido registrado y será atendido por el equipo de IT.
 Recibirás actualizaciones en cuanto haya progreso.`;
 
-        // Agregar aviso si es fuera de horario
+        // Agregar aviso solo sobre horario de IT si es fuera de horario
         if (!isBusinessHours) {
             const nextBusinessHours = ScheduleUtil.getNextBusinessHours();
             const nextDate = nextBusinessHours.toLocaleString('es-MX', { 
@@ -657,7 +657,7 @@ Recibirás actualizaciones en cuanto haya progreso.`;
                 timeZone: 'America/Mexico_City'
             });
             
-            response += `\n\n⏰ *Aviso:* Fuera de horario de atención. Tu ticket será atendido en el siguiente horario hábil de IT (Lunes a Viernes, 9 AM - 5 PM) a partir del ${nextDate}.`;
+            response += `\n\n⏰ *Aviso:* El equipo de IT atenderá en horario hábil (Lunes a Viernes, 9 AM - 5 PM). Atención estimada a partir del ${nextDate}.`;
         }
 
         response += `\n\n*Ver mis tickets:* \`!ticket list\`
