@@ -4,6 +4,7 @@ import { FeedbackModel } from '../crm/models/feedback.model';
 import { ProjectModel } from '../crm/models/project.model';
 import { TaskModel } from '../crm/models/task.model';
 import { IScheduledReport } from '../crm/models/scheduled-report.model';
+import EnvConfig from '../configs/env.config';
 import logger from '../configs/logger.config';
 
 /**
@@ -56,6 +57,63 @@ export interface ReportData {
 /**
  * Genera un reporte basado en la configuración programada
  */
+/**
+ * Verificar si hay cambios desde el último reporte
+ */
+export async function hasChanges(reportConfig: IScheduledReport): Promise<boolean> {
+    // Si no está configurado para solo enviar si hay cambios, siempre retornar true
+    if (!reportConfig.onlySendIfChanges) {
+        return true;
+    }
+
+    // Si no hay snapshot previo, hay cambios (primer envío)
+    if (!reportConfig.lastReportSnapshot || !reportConfig.lastReportSnapshot.snapshotDate) {
+        return true;
+    }
+
+    const startDate = reportConfig.dateRange.startDate;
+    const endDate = reportConfig.dateRange.endDate;
+
+    // Obtener datos actuales
+    const currentData = await gatherReportData(startDate, endDate, reportConfig);
+    const snapshot = reportConfig.lastReportSnapshot;
+
+    // Comparar métricas clave
+    const hasProjectChanges = 
+        (currentData.projects?.total || 0) !== (snapshot.projectsCount || 0) ||
+        (currentData.projects?.progressAverage || 0) !== (snapshot.projectsProgress || 0);
+
+    const hasTaskChanges = 
+        (currentData.tasks?.total || 0) !== (snapshot.tasksCount || 0) ||
+        (currentData.tasks?.completed || 0) !== (snapshot.completedTasks || 0) ||
+        (currentData.tasks?.progressAverage || 0) !== (snapshot.tasksProgress || 0);
+
+    const hasTicketChanges = 
+        (currentData.tickets?.total || 0) !== (snapshot.ticketsCount || 0) ||
+        (currentData.tickets?.resolved || 0) !== (snapshot.ticketsResolved || 0);
+
+    return hasProjectChanges || hasTaskChanges || hasTicketChanges;
+}
+
+/**
+ * Guardar snapshot del reporte actual
+ */
+export async function saveReportSnapshot(reportConfig: IScheduledReport, reportData: ReportData): Promise<void> {
+    const snapshot = {
+        projectsCount: reportData.projects?.total || 0,
+        tasksCount: reportData.tasks?.total || 0,
+        completedTasks: reportData.tasks?.completed || 0,
+        projectsProgress: reportData.projects?.progressAverage || 0,
+        tasksProgress: reportData.tasks?.progressAverage || 0,
+        ticketsCount: reportData.tickets?.total || 0,
+        ticketsResolved: reportData.tickets?.resolved || 0,
+        snapshotDate: new Date()
+    };
+
+    reportConfig.lastReportSnapshot = snapshot;
+    await reportConfig.save();
+}
+
 export async function generateReport(reportConfig: IScheduledReport, recipientPhone?: string): Promise<string> {
     try {
         const { startDate, endDate } = reportConfig.dateRange;
@@ -71,7 +129,7 @@ export async function generateReport(reportConfig: IScheduledReport, recipientPh
 /**
  * Recopila todos los datos para el reporte
  */
-async function gatherReportData(
+export async function gatherReportData(
     startDate: Date,
     endDate: Date,
     config: IScheduledReport
@@ -255,30 +313,26 @@ async function gatherReportData(
 
 /**
  * Obtener nombre del destinatario desde número de teléfono
- * Puedes configurar aquí los números específicos de tus jefes
+ * Configuración desde variables de entorno
  */
 function getRecipientName(phoneNumber: string): string | null {
     // Normalizar número (remover caracteres especiales)
     const phoneNormalized = phoneNumber.replace(/[^0-9]/g, '');
     
-    // Mapeo de números de teléfono específicos a nombres
-    // CONFIGURA AQUÍ LOS NÚMEROS DE TUS JEFES
-    const recipients: Record<string, string> = {
-        // Ejemplo: Si el número de Salma es 5214421056597
-        // '5214421056597': 'Salma',
-        // '5214421056598': 'Francisco',
-        // Agregar números reales aquí
-        
-        // Búsqueda por palabras clave en el número
-        // (útil si los números tienen algún patrón)
-    };
-    
-    // Buscar por número exacto
-    if (recipients[phoneNormalized]) {
-        return recipients[phoneNormalized];
+    // Buscar en variables de entorno primero
+    if (EnvConfig.SALMA_PHONE && phoneNormalized === EnvConfig.SALMA_PHONE.replace(/[^0-9]/g, '')) {
+        return 'Salma';
     }
     
-    // Buscar por palabras clave (si el número contiene algún identificador)
+    if (EnvConfig.FRANCISCO_PHONE && phoneNormalized === EnvConfig.FRANCISCO_PHONE.replace(/[^0-9]/g, '')) {
+        return 'Francisco';
+    }
+    
+    // Buscar en la base de datos por rol
+    // Esto permite configurar roles desde el frontend
+    // Se puede buscar en ContactModel por role: 'boss' o 'ceo'
+    
+    // Búsqueda por palabras clave como fallback
     const phoneLower = phoneNumber.toLowerCase().replace(/[^0-9a-z]/g, '');
     const keywords: Record<string, string> = {
         'salma': 'Salma',

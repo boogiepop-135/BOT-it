@@ -145,25 +145,99 @@
       const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`);
       tasksList.innerHTML = '';
       if (tasks.length === 0) {
-        tasksList.innerHTML = '<p class="text-gray-500 text-sm">No hay tareas en este proyecto</p>';
+        tasksList.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No hay tareas en este proyecto</p>';
         return;
       }
+      
+      // Agrupar tareas por estado
+      const statusGroups = {
+        'todo': [],
+        'doing': [],
+        'done': []
+      };
+      
       tasks.forEach(t => {
-        const div = document.createElement('div');
-        div.className = 'flex items-center justify-between p-3 border rounded bg-gray-50';
-        div.innerHTML = `
-          <div class="flex-1">
-            <span class="font-medium">${t.name}</span>
-            <span class="text-sm text-gray-500 ml-2">(${t.progress || 0}%)</span>
-            ${t.dependencies?.length ? `<span class="text-xs text-blue-600 ml-2">Deps: ${t.dependencies.length}</span>` : ''}
-          </div>
-          <div class="flex gap-2">
-            <button onclick="openTaskEditModal('${t._id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">Editar</button>
-            <button onclick="deleteTask('${t._id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Eliminar</button>
-          </div>
-        `;
-        tasksList.appendChild(div);
+        const status = t.status || 'todo';
+        if (statusGroups[status]) {
+          statusGroups[status].push(t);
+        } else {
+          statusGroups['todo'].push(t);
+        }
       });
+      
+      // Renderizar cada grupo
+      Object.entries(statusGroups).forEach(([status, statusTasks]) => {
+        if (statusTasks.length === 0) return;
+        
+        const statusNames = {
+          'todo': '📋 Por Hacer',
+          'doing': '🚀 En Progreso',
+          'done': '✅ Completadas'
+        };
+        
+        const statusColors = {
+          'todo': 'border-gray-300 bg-gray-50',
+          'doing': 'border-blue-300 bg-blue-50',
+          'done': 'border-green-300 bg-green-50'
+        };
+        
+        const groupDiv = document.createElement('div');
+        groupDiv.className = `mb-4 ${statusColors[status] || statusColors.todo}`;
+        groupDiv.innerHTML = `<h4 class="font-semibold text-gray-700 mb-2 px-3 pt-3">${statusNames[status]} (${statusTasks.length})</h4>`;
+        
+        const tasksContainer = document.createElement('div');
+        tasksContainer.className = 'space-y-2 px-3 pb-3';
+        
+        statusTasks.forEach(t => {
+          const progress = t.progress || 0;
+          const progressBar = generateProgressBar(progress);
+          
+          const taskDiv = document.createElement('div');
+          taskDiv.className = 'bg-white rounded-lg shadow-sm p-4 border border-gray-200';
+          taskDiv.innerHTML = `
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex-1">
+                <h5 class="font-medium text-gray-800 mb-1">${t.name}</h5>
+                ${t.description ? `<p class="text-sm text-gray-600 mb-2">${t.description}</p>` : ''}
+              </div>
+              <div class="flex gap-2 ml-3">
+                <button onclick="openTaskEditModal('${t._id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" title="Editar">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteTask('${t._id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" title="Eliminar">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="mb-2">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-gray-600">Progreso</span>
+                <span class="font-bold text-gray-800">${progress}%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <div class="flex items-center gap-3">
+                ${t.startDate ? `<span><i class="fas fa-calendar-alt mr-1"></i>Inicio: ${new Date(t.startDate).toLocaleDateString('es-MX')}</span>` : ''}
+                ${t.endDate ? `<span><i class="fas fa-calendar-check mr-1"></i>Fin: ${new Date(t.endDate).toLocaleDateString('es-MX')}</span>` : ''}
+              </div>
+              ${t.dependencies?.length > 0 ? `<span class="text-blue-600"><i class="fas fa-link mr-1"></i>${t.dependencies.length} dependencia(s)</span>` : ''}
+            </div>
+          `;
+          tasksContainer.appendChild(taskDiv);
+        });
+        
+        groupDiv.appendChild(tasksContainer);
+        tasksList.appendChild(groupDiv);
+      });
+    }
+    
+    function generateProgressBar(progress) {
+      const filled = Math.round(progress / 10);
+      const empty = 10 - filled;
+      return '█'.repeat(filled) + '░'.repeat(empty);
     }
 
     function updateDependenciesSelectors() {
@@ -221,16 +295,20 @@
     projectForm?.addEventListener('submit', async (e)=>{
       e.preventDefault(); projMsg.textContent='';
       try{
+        const progressValue = document.getElementById('projProgress').value;
         const body = {
           name: document.getElementById('projName').value.trim(),
           status: 'planned',
           startDate: document.getElementById('projStart').value || undefined,
-          endDate: document.getElementById('projEnd').value || undefined
+          endDate: document.getElementById('projEnd').value || undefined,
+          progress: progressValue ? parseInt(progressValue) : 0
         };
         if (!body.name) throw new Error('Nombre requerido');
         await fetchJSON('/crm/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         projectForm.reset();
+        document.getElementById('projProgress').value = '0';
         await loadProjectsForGantt();
+        await loadTasksList(projectSelect?.value);
       }catch(err){ projMsg.textContent = 'Error al crear proyecto: ' + (err.message||''); }
     });
 
@@ -609,11 +687,14 @@
 
       <div class="mt-6 bg-white rounded-lg shadow p-4">
         <h3 class="text-lg font-semibold mb-3">Nuevo proyecto</h3>
-        <form id="projectForm" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <form id="projectForm" class="grid grid-cols-1 md:grid-cols-5 gap-3">
           <input id="projName" class="border rounded px-3 py-2" placeholder="Nombre del proyecto" required />
           <input id="projStart" type="date" class="border rounded px-3 py-2" />
           <input id="projEnd" type="date" class="border rounded px-3 py-2" />
-          <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded">Crear proyecto</button>
+          <input id="projProgress" type="number" min="0" max="100" value="0" class="border rounded px-3 py-2" placeholder="Progreso %" />
+          <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded">
+            <i class="fas fa-plus mr-2"></i>Crear proyecto
+          </button>
         </form>
         <p id="projMsg" class="text-sm text-red-600 h-5 mt-2"></p>
       </div>

@@ -2,7 +2,7 @@ import { CronJob } from 'cron';
 import logger from '../configs/logger.config';
 import { BotManager } from '../bot.manager';
 import { ScheduledReportModel } from '../crm/models/scheduled-report.model';
-import { generateReport } from '../utils/report-generator.util';
+import { generateReport, hasChanges, saveReportSnapshot } from '../utils/report-generator.util';
 
 /**
  * Cron job para enviar reportes programados
@@ -70,7 +70,30 @@ async function checkAndSendScheduledReports(botManager: BotManager) {
  */
 async function sendScheduledReport(botManager: BotManager, report: any) {
     try {
-        logger.info(`Sending scheduled report: ${report.name} (${report._id})`);
+        logger.info(`Checking scheduled report: ${report.name} (${report._id})`);
+
+        // Verificar si hay cambios (si está configurado para solo enviar si hay cambios)
+        const shouldSend = await hasChanges(report);
+        
+        if (!shouldSend) {
+            logger.info(`No changes detected for report ${report._id}, skipping send`);
+            
+            // Actualizar próxima fecha de envío aunque no se envíe
+            if (report.schedule.frequency === 'once') {
+                report.schedule.enabled = false;
+            } else {
+                report.nextSendAt = report.calculateNextSendDate();
+            }
+            await report.save();
+            return;
+        }
+
+        logger.info(`Changes detected, sending scheduled report: ${report.name} (${report._id})`);
+
+        // Generar datos del reporte para el snapshot
+        const { startDate, endDate } = report.dateRange;
+        const reportGenerator = await import('../utils/report-generator.util');
+        const reportData = await reportGenerator.gatherReportData(startDate, endDate, report);
 
         // Generar el reporte
         const reportText = await generateReport(report);
@@ -91,6 +114,9 @@ async function sendScheduledReport(botManager: BotManager, report: any) {
                 logger.error(`Failed to send report to ${phoneNumber}:`, error);
             }
         }
+
+        // Guardar snapshot después de enviar exitosamente
+        await saveReportSnapshot(report, reportData);
 
         // Actualizar reporte
         report.lastSentAt = new Date();

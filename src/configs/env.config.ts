@@ -17,6 +17,10 @@ class EnvConfig {
     static PORT = process.env.PORT;
     static MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URL || process.env.MONGO_PUBLIC_URL;
     static JWT_SECRET = process.env.JWT_SECRET;
+    
+    // Números de teléfono de jefes para personalización de reportes
+    static SALMA_PHONE = process.env.SALMA_PHONE || '';
+    static FRANCISCO_PHONE = process.env.FRANCISCO_PHONE || '';
 
     static validate() {
 

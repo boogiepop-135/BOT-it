@@ -30,6 +30,18 @@ export interface IScheduledReport extends Document {
     createdBy?: mongoose.Types.ObjectId;
     lastSentAt?: Date;
     nextSendAt?: Date;
+    lastReportSnapshot?: {
+        // Snapshots para detectar cambios
+        projectsCount?: number;
+        tasksCount?: number;
+        completedTasks?: number;
+        projectsProgress?: number;
+        tasksProgress?: number;
+        ticketsCount?: number;
+        ticketsResolved?: number;
+        snapshotDate?: Date;
+    };
+    onlySendIfChanges?: boolean; // Solo enviar si hay cambios
     createdAt: Date;
     updatedAt: Date;
 }
@@ -71,7 +83,18 @@ const ScheduledReportSchema = new Schema<IScheduledReport>({
     includeMetrics: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     lastSentAt: Date,
-    nextSendAt: Date
+    nextSendAt: Date,
+    lastReportSnapshot: {
+        projectsCount: Number,
+        tasksCount: Number,
+        completedTasks: Number,
+        projectsProgress: Number,
+        tasksProgress: Number,
+        ticketsCount: Number,
+        ticketsResolved: Number,
+        snapshotDate: Date
+    },
+    onlySendIfChanges: { type: Boolean, default: true } // Por defecto solo enviar si hay cambios
 }, { timestamps: true });
 
 // Calcular próxima fecha de envío basada en la frecuencia
