@@ -86,28 +86,51 @@ export const run = async (message: Message, args: string[] | null, userI18n: Use
             return;
         }
 
-        if (mensajeCompleto.includes("consultar") || mensajeCompleto.includes("consulta") ||
-            mensajeCompleto.includes("ver") || mensajeCompleto.includes("listar") ||
-            mensajeCompleto.includes("mostrar") || mensajeCompleto.includes("muestra")) {
+        // Detectar intención de consultar horarios/reuniones - Mejorado
+        const consultaKeywords = [
+            "consultar", "consulta", "ver", "listar", "mostrar", "muestra",
+            "que reuniones", "que reunión", "reuniones habran", "reuniones habrá",
+            "hay reuniones", "hay alguna reunión", "horarios de", "horarios para",
+            "qué reuniones", "cuales reuniones", "reuniones del", "reuniones para",
+            "agenda", "agenda de", "calendario", "eventos", "eventos de"
+        ];
+        
+        const esConsulta = consultaKeywords.some(keyword => mensajeCompleto.includes(keyword)) ||
+            mensajeCompleto.match(/(que|qué|cuáles|cuales)\s+(reuniones|eventos|horarios)/i) ||
+            mensajeCompleto.match(/ver\s+horarios/i) ||
+            mensajeCompleto.match(/habrán|habran|habrá|habra/i);
+        
+        if (esConsulta) {
             await manejarConsultarHorarios(message, textoMensaje, args);
             return;
         }
 
-        // Si no se detecta intención clara, mostrar ayuda
-        await message.reply(
-            `📅 *Gestión de Reservas de Sala de Conferencias*\n\n` +
-            `*Comandos disponibles:*\n\n` +
-            `➕ *RESERVAR SALA*\n` +
-            `"Quiero reservar la sala" o "Reservar sala"\n` +
-            `Te guiaré paso a paso para hacer tu reserva.\n\n` +
-            `✏️ *MODIFICAR RESERVA*\n` +
-            `"Cambia la hora de la reunión del 15 de enero de las 10:00 a las 15:00"\n\n` +
-            `❌ *ELIMINAR RESERVA*\n` +
-            `"Elimina la reunión de mañana a las 10"\n\n` +
-            `👀 *CONSULTAR HORARIOS*\n` +
-            `"Ver horarios de mañana"\n\n` +
-            `_Escribe \`cancel\` en cualquier momento para cancelar una operación._`
-        );
+        // Si no se detecta intención clara, intentar usar AI para entender mejor
+        try {
+            const { aiCompletion } = await import('../utils/ai-fallback.util');
+            const aiPrompt = `El usuario pregunta sobre reservas o sala de conferencias: "${mensajeCompleto}". 
+Responde de forma amigable y natural en español indicando que puedo ayudarle con:
+- Reservar la sala de conferencias
+- Consultar horarios disponibles
+- Modificar o cancelar reservas
+
+Si la pregunta parece ser sobre consultar horarios o ver qué reuniones hay, indícale que puedo consultar los horarios disponibles.`;
+            
+            const aiResponse = await aiCompletion(aiPrompt);
+            await message.reply(aiResponse.text);
+        } catch (error) {
+            // Fallback a ayuda estándar si AI falla
+            logger.error('Error usando AI para responder:', error);
+            await message.reply(
+                `📅 *Gestión de Reservas de Sala de Conferencias*\n\n` +
+                `Puedo ayudarte con:\n\n` +
+                `➕ *Reservar la sala* - "Quiero reservar la sala"\n` +
+                `👀 *Ver horarios* - "Ver horarios de mañana" o "Que reuniones hay"\n` +
+                `✏️ *Modificar reserva* - "Cambia la hora de la reunión"\n` +
+                `❌ *Cancelar reserva* - "Elimina la reunión de mañana"\n\n` +
+                `¿Qué te gustaría hacer?`
+            );
+        }
     } catch (error) {
         logger.error("Error en horarios.command:", error);
         await message.reply("❌ Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.");

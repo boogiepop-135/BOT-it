@@ -52,7 +52,27 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     // Respuestas directas del menú (check these first!)
     const cleanQuery = query.trim().toLowerCase();
     
-    // Detectar intención de reserva de sala ANTES de las otras opciones
+    // Detectar intención de consultar horarios/reuniones ANTES de reservas
+    const consultaHorariosKeywords = [
+        'ver horarios', 'horarios de', 'horarios para', 'que reuniones', 
+        'qué reuniones', 'reuniones habran', 'reuniones habrán', 'hay reuniones',
+        'consultar horarios', 'ver reuniones', 'listar horarios', 'mostrar horarios',
+        'agenda', 'agenda de', 'calendario', 'eventos'
+    ];
+    
+    const esConsultaHorarios = consultaHorariosKeywords.some(keyword => cleanQuery.includes(keyword)) ||
+        cleanQuery.match(/(que|qué|cuáles|cuales)\s+(reuniones|eventos|horarios)/i) ||
+        cleanQuery.match(/ver\s+horarios/i) ||
+        cleanQuery.match(/habrán|habran|habrá|habra/i);
+    
+    if (esConsultaHorarios) {
+        logger.info(`Horarios query intent detected: ${cleanQuery}`);
+        const { run: runHorarios } = await import('./horarios.command');
+        await runHorarios(message, args, userI18n);
+        return;
+    }
+    
+    // Detectar intención de reserva de sala
     const reservaKeywords = [
         'reservar', 'reserva', 'sala de conferencias', 'sala conferencias', 
         'sala', 'conferencia', 'conferencias', 'reunión', 'reunion', 'meeting',
