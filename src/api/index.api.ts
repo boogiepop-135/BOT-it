@@ -36,15 +36,37 @@ export default function (botManager: BotManager) {
 
     router.get("/health", async (_req, res) => {
         try {
-            const isClientReady = client && client.info ? true : false;
+            // Verificar más a fondo el estado del cliente
+            let isClientReady = false;
+            let clientState = 'unknown';
+            
+            if (client) {
+                try {
+                    // Verificar si el cliente tiene info y está conectado
+                    if (client.info && client.info.wid) {
+                        isClientReady = true;
+                        clientState = 'ready';
+                    } else if (client.pupPage && !client.info) {
+                        clientState = 'initializing';
+                    } else {
+                        clientState = 'disconnected';
+                    }
+                } catch (error) {
+                    logger.warn('Error checking client state:', error);
+                    clientState = 'error';
+                }
+            } else {
+                clientState = 'not_initialized';
+            }
 
             const healthStatus = {
-                status: isClientReady ? "healthy" : "unhealthy",
+                status: isClientReady ? "healthy" : (qrData.qrScanned ? "initializing" : "unhealthy"),
                 clientReady: isClientReady,
+                clientState: clientState,
                 uptime: process.uptime(),
                 memoryUsage: process.memoryUsage(),
                 qrScanned: qrData.qrScanned,
-                botContact: client && client.info ? `<a target="_blank" href="https://wa.me/${client.info.wid.user}">wa.me/${client.info.wid.user}</a>` : null,
+                botContact: client && client.info && client.info.wid ? `<a target="_blank" href="https://wa.me/${client.info.wid.user}">wa.me/${client.info.wid.user}</a>` : null,
                 botPushName: client && client.info ? client.info.pushname : null,
                 botPlatform: client && client.info ? client.info.platform : null,
                 version: process.version,

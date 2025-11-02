@@ -20,6 +20,7 @@ export class BotManager {
     private userI18nCache = new Map<string, UserI18n>();
     private prefix = AppConfig.instance.getBotPrefix();
     private isPaused: boolean = false;
+    private isReconnecting: boolean = false;
 
     private constructor() {
         // El cliente se inicializará de forma asíncrona
@@ -101,12 +102,26 @@ export class BotManager {
         this.client.on('qr', this.handleQr.bind(this));
         this.client.on('message_create', this.handleMessage.bind(this));
         this.client.on('disconnected', this.handleDisconnect.bind(this));
+        this.client.on('auth_failure', this.handleAuthFailure.bind(this));
+        this.client.on('loading_screen', this.handleLoadingScreen.bind(this));
+        this.client.on('change_state', this.handleStateChange.bind(this));
+        this.client.on('error', this.handleError.bind(this));
     }
 
 
     private async handleReady() {
         this.qrData.qrScanned = true;
-        logger.info("Client is ready!");
+        this.isReconnecting = false; // Resetear flag de reconexión
+        
+        // Esperar un momento para asegurar que el cliente esté completamente listo
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verificar que el cliente tenga info antes de loguear
+        if (this.client && this.client.info) {
+            logger.info(`Client is ready! Push name: ${this.client.info.pushname || 'Unknown'}, Platform: ${this.client.info.platform || 'Unknown'}`);
+        } else {
+            logger.info("Client is ready!");
+        }
 
         try {
             await YtDlpDownloader.getInstance().initialize();
@@ -124,10 +139,61 @@ export class BotManager {
     }
 
     private handleDisconnect(reason: string) {
-        logger.info(`Client disconnected: ${reason}`);
-        setTimeout(() => {
-            this.client.initialize();
-        }, 5000);
+        logger.warn(`Client disconnected: ${reason}`);
+        
+        // Si la desconexión es por un logout forzado, no reconectar automáticamente
+        if (reason === 'LOGOUT') {
+            logger.info('Client logged out. Not reconnecting automatically.');
+            this.qrData.qrScanned = false;
+            this.qrData.qrCodeData = "";
+            return;
+        }
+        
+        // Para otras desconexiones, intentar reconectar después de un delay
+        // Evitar reconexiones múltiples usando un flag
+        if (!this.isReconnecting) {
+            this.isReconnecting = true;
+            setTimeout(async () => {
+                try {
+                    if (this.client && this.client.info?.wid) {
+                        logger.info('Attempting to reconnect...');
+                        await this.client.initialize();
+                    }
+                } catch (error) {
+                    logger.error('Reconnection attempt failed:', error);
+                } finally {
+                    this.isReconnecting = false;
+                }
+            }, 10000); // Aumentar delay a 10 segundos
+        }
+    }
+
+    private handleAuthFailure(message: string) {
+        logger.error(`Authentication failure: ${message}`);
+        this.qrData.qrScanned = false;
+        this.qrData.qrCodeData = "";
+        // No intentar reconectar automáticamente en caso de auth failure
+    }
+
+    private handleLoadingScreen(percent: string, message: string) {
+        logger.info(`Loading screen: ${percent}% - ${message}`);
+    }
+
+    private handleStateChange(state: string) {
+        logger.info(`State changed to: ${state}`);
+        
+        // Actualizar estado según el cambio
+        if (state === 'CONNECTED') {
+            this.qrData.qrScanned = true;
+        } else if (state === 'OPENING') {
+            // Cliente está abriendo, mantener estado actual
+        }
+    }
+
+    private handleError(error: Error) {
+        logger.error('WhatsApp client error:', error);
+        // No intentar reconectar automáticamente en errores
+        // El handleDisconnect se encargará si es necesario
     }
 
     public async initialize() {
@@ -279,6 +345,12 @@ export class BotManager {
         const isBusinessHours = ScheduleUtil.isBusinessHours();
         if (!isBusinessHours) {
             try {
+                // Verificar que el cliente esté conectado antes de enviar mensaje
+                if (!this.client || !this.client.info || !this.client.info.wid) {
+                    logger.warn('Client not connected, skipping off-hours message');
+                    return;
+                }
+
                 let user;
                 try {
                     user = await message.getContact();
@@ -296,6 +368,12 @@ export class BotManager {
                 userI18n = this.getUserI18n(user.number);
                 chat = await message.getChat();
                 
+                // Verificar nuevamente antes de enviar
+                if (!this.client || !this.client.info || !this.client.info.wid) {
+                    logger.warn('Client disconnected while preparing off-hours message');
+                    return;
+                }
+                
                 // Enviar mensaje de fuera de horario
                 const offHoursMessage = ScheduleUtil.getOffHoursMessage(userI18n.getLanguage());
                 await chat.sendMessage(offHoursMessage);
@@ -304,7 +382,16 @@ export class BotManager {
                 return;
             } catch (error) {
                 logger.error('Error sending off-hours message:', error);
-                // Continuar con el procesamiento normal si hay error
+                // Si el error es por desconexión, no continuar
+                if (error instanceof Error && (
+                    error.message.includes('disconnected') ||
+                    error.message.includes('logout') ||
+                    error.message.includes('Session closed')
+                )) {
+                    logger.warn('Client disconnected during off-hours message send');
+                    return;
+                }
+                // Continuar con el procesamiento normal si hay otro tipo de error
             }
         }
 
@@ -346,27 +433,46 @@ export class BotManager {
             if (!user.isMe) await this.trackContact(message, userI18n);
             chat = await message.getChat();
 
+            // Verificar que el cliente esté completamente inicializado antes de verificar info
+            if (!this.client || !this.client.info || !this.client.info.wid) {
+                logger.warn('Client not fully initialized, skipping message processing');
+                return;
+            }
+
             if (message.from === this.client.info.wid._serialized || message.isStatus) {
                 return;
             }
 
-            await Promise.all([
-                onboard(message, userI18n),
-                this.processMessageContent(message, content, userI18n, chat)
-            ]);
+            // Procesar mensaje de forma secuencial para evitar problemas de concurrencia
+            // Verificar nuevamente que el cliente esté listo antes de procesar
+            if (!this.client || !this.client.info || !this.client.info.wid) {
+                logger.warn('Client disconnected during message processing, aborting');
+                return;
+            }
 
-            // await onboard(message, userI18n);
-            // await this.processMessageContent(message, content, userI18n, chat);
+            await onboard(message, userI18n);
+            await this.processMessageContent(message, content, userI18n, chat);
 
         } catch (error) {
             logger.error(`Message handling error: ${error}`);
             
+            // Verificar si el error es por desconexión del cliente
+            if (error instanceof Error && (
+                error.message.includes('disconnected') ||
+                error.message.includes('logout') ||
+                error.message.includes('Session closed') ||
+                !this.client || !this.client.info
+            )) {
+                logger.warn('Client disconnected, not sending error message to user');
+                return;
+            }
+            
             // Don't try to send error message to user, just log it
             // This prevents cascading errors when WhatsApp is having issues
             try {
-                if (chat && userI18n) {
+                if (chat && userI18n && this.client && this.client.info) {
                     const errorMessage = userI18n.t('errorOccurred') || 'An error occurred';
-                    // Only send error message if we're not paused
+                    // Only send error message if we're not paused and client is ready
                     if (!this.isPaused) {
                         await chat.sendMessage(`> 🤖 ${errorMessage}`);
                     }
