@@ -46,7 +46,9 @@ export default function (botManager: BotManager) {
                     if (client.info && client.info.wid) {
                         isClientReady = true;
                         clientState = 'ready';
-                    } else if (client.pupPage && !client.info) {
+                    } else if (client.pupPage || qrData.qrScanned) {
+                        // Si tiene pupPage o el QR fue escaneado, está inicializando o cargando
+                        // Esto puede pasar cuando se restaura desde MongoDB
                         clientState = 'initializing';
                     } else {
                         clientState = 'disconnected';
@@ -63,7 +65,9 @@ export default function (botManager: BotManager) {
             let finalStatus = "unhealthy";
             if (isClientReady) {
                 finalStatus = "healthy";
-            } else if (qrData.qrScanned && clientState === 'initializing') {
+            } else if (qrData.qrScanned && (clientState === 'initializing' || clientState === 'ready')) {
+                // Si el QR fue escaneado pero client.info aún no está disponible,
+                // puede estar cargando después de restaurar desde MongoDB
                 finalStatus = "initializing";
             } else if (!qrData.qrScanned && clientState === 'not_initialized') {
                 finalStatus = "unhealthy";

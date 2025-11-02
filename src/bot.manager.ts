@@ -104,24 +104,41 @@ export class BotManager {
         this.client.on('message_create', this.handleMessage.bind(this));
         this.client.on('disconnected', this.handleDisconnect.bind(this));
         this.client.on('auth_failure', this.handleAuthFailure.bind(this));
+        this.client.on('authenticated', this.handleAuthenticated.bind(this));
         this.client.on('loading_screen', this.handleLoadingScreen.bind(this));
         this.client.on('change_state', this.handleStateChange.bind(this));
         this.client.on('error', this.handleError.bind(this));
     }
 
 
+    private async handleAuthenticated() {
+        logger.info("Client authenticated (session restored from MongoDB)");
+        this.qrData.qrScanned = true;
+    }
+
     private async handleReady() {
         this.qrData.qrScanned = true;
         this.isReconnecting = false; // Resetear flag de reconexión
         
-        // Esperar un momento para asegurar que el cliente esté completamente listo
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        logger.info("Client ready event fired");
         
-        // Verificar que el cliente tenga info antes de loguear
-        if (this.client && this.client.info) {
-            logger.info(`Client is ready! Push name: ${this.client.info.pushname || 'Unknown'}, Platform: ${this.client.info.platform || 'Unknown'}`);
-        } else {
-            logger.info("Client is ready!");
+        // Esperar un poco más y verificar periódicamente que client.info esté disponible
+        // Esto es necesario porque cuando se restaura desde MongoDB, puede tardar un momento
+        let attempts = 0;
+        const maxAttempts = 10; // Esperar hasta 5 segundos (10 * 500ms)
+        
+        while (attempts < maxAttempts) {
+            if (this.client && this.client.info && this.client.info.wid) {
+                logger.info(`Client is ready! Push name: ${this.client.info.pushname || 'Unknown'}, Platform: ${this.client.info.platform || 'Unknown'}, Number: ${this.client.info.wid.user || 'Unknown'}`);
+                break;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+        }
+        
+        if (attempts >= maxAttempts && (!this.client || !this.client.info)) {
+            logger.warn("Client ready but info not yet available - it may still be loading");
         }
 
         try {
