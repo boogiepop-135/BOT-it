@@ -14,6 +14,41 @@ const port = EnvConfig.PORT || 3000;
 
 const botManager = BotManager.getInstance();
 
+// Manejar errores no capturados para evitar que el proceso se detenga
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // No hacer exit, solo loggear para que el bot continúe funcionando
+});
+
+process.on('uncaughtException', (error: Error) => {
+    logger.error('Uncaught Exception:', error);
+    // No hacer exit inmediatamente, dar tiempo para loggear
+    // En producción, podrías querer hacer graceful shutdown aquí
+});
+
+// Manejar señales de terminación (SIGTERM, SIGINT)
+// Railway envía SIGTERM cuando detiene el contenedor
+process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received, shutting down gracefully...');
+    try {
+        // Aquí podrías cerrar conexiones limpiamente si es necesario
+        process.exit(0);
+    } catch (error) {
+        logger.error('Error during graceful shutdown:', error);
+        process.exit(1);
+    }
+});
+
+process.on('SIGINT', async () => {
+    logger.info('SIGINT received, shutting down gracefully...');
+    try {
+        process.exit(0);
+    } catch (error) {
+        logger.error('Error during graceful shutdown:', error);
+        process.exit(1);
+    }
+});
+
 // Conectar a MongoDB primero, luego inicializar el cliente de WhatsApp
 connectDB().then(async () => {
     // Inicializar el cliente después de conectar a MongoDB
@@ -22,7 +57,8 @@ connectDB().then(async () => {
     botManager.initialize();
 }).catch((error) => {
     logger.error('Failed to initialize:', error);
-    process.exit(1);
+    // No hacer exit inmediatamente, intentar continuar
+    // process.exit(1);
 });
 
 app.set("view engine", "ejs");

@@ -93,7 +93,8 @@ export default function (botManager: BotManager) {
                 version: process.version,
             };
 
-            logger.info("GET /health");
+            // Solo loggear cambios de estado o errores, no cada request
+            // logger.info("GET /health"); // Comentado para reducir logs
             res.status(200).json(healthStatus);
         } catch (error) {
             logger.error("Health check failed", error);

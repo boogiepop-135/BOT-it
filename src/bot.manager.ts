@@ -171,18 +171,87 @@ export class BotManager {
         // Evitar reconexiones múltiples usando un flag
         if (!this.isReconnecting) {
             this.isReconnecting = true;
+            
+            // Verificar si el cliente fue destruido
+            let clientWasDestroyed = false;
+            try {
+                if (this.client) {
+                    // Verificar si puppeteer page está cerrada
+                    clientWasDestroyed = this.client.pupPage?.isClosed() || false;
+                } else {
+                    clientWasDestroyed = true;
+                }
+            } catch {
+                clientWasDestroyed = true;
+            }
+            
             setTimeout(async () => {
                 try {
-                    if (this.client && this.client.info?.wid) {
-                        logger.info('Attempting to reconnect...');
-                        await this.client.initialize();
+                    // Si el cliente fue destruido o no existe, recrearlo
+                    if (!this.client || clientWasDestroyed) {
+                        logger.warn('Client was destroyed, recreating...');
+                        await this.initializeClient();
+                        if (this.client) {
+                            logger.info('Recreated client, initializing...');
+                            await this.client.initialize();
+                        }
+                    } else if (this.client && this.client.info?.wid) {
+                        logger.info('Attempting to reconnect existing client...');
+                        try {
+                            await this.client.initialize();
+                        } catch (error: any) {
+                            // Si initialize falla, puede ser que el cliente esté destruido
+                            if (error.message?.includes('destroyed') || 
+                                error.message?.includes('Session closed') ||
+                                error.message?.includes('Target closed')) {
+                                logger.warn('Client appears to be destroyed, recreating...');
+                                await this.initializeClient();
+                                if (this.client) {
+                                    await this.client.initialize();
+                                }
+                            } else {
+                                throw error;
+                            }
+                        }
+                    } else {
+                        // Cliente existe pero no tiene info, intentar inicializar
+                        logger.warn('Client exists but info not available, initializing...');
+                        if (this.client) {
+                            await this.client.initialize();
+                        }
                     }
                 } catch (error) {
                     logger.error('Reconnection attempt failed:', error);
+                    // Como último recurso, intentar recrear el cliente
+                    try {
+                        logger.info('Attempting to recreate client after failed reconnect...');
+                        await this.initializeClient();
+                        if (this.client) {
+                            await this.client.initialize();
+                        }
+                    } catch (recreateError) {
+                        logger.error('Failed to recreate client:', recreateError);
+                    }
                 } finally {
                     this.isReconnecting = false;
                 }
-            }, 10000); // Aumentar delay a 10 segundos
+            }, 10000); // Delay de 10 segundos antes de intentar reconectar
+        } else if (!this.client && !this.isReconnecting) {
+            // Si no hay cliente y no hay reconexión en proceso, intentar crear uno nuevo
+            logger.warn('No client exists, attempting to create new one...');
+            this.isReconnecting = true;
+            setTimeout(async () => {
+                try {
+                    await this.initializeClient();
+                    if (this.client) {
+                        await this.client.initialize();
+                    }
+                } catch (error) {
+                    logger.error('Failed to create new client after disconnect:', error);
+                } finally {
+                    this.isReconnecting = false;
+                }
+            }, 10000);
         }
     }
 
@@ -210,6 +279,15 @@ export class BotManager {
 
     private handleError(error: Error) {
         logger.error('WhatsApp client error:', error);
+        
+        // Si el error indica que el cliente fue destruido o la sesión se cerró,
+        // esperar a que handleDisconnect se encargue
+        if (error.message?.includes('destroyed') || 
+            error.message?.includes('Session closed') || 
+            error.message?.includes('Target closed')) {
+            logger.warn('Client appears to be destroyed, will wait for disconnect event');
+            // No hacer nada aquí, handleDisconnect se encargará
+        }
         // No intentar reconectar automáticamente en errores
         // El handleDisconnect se encargará si es necesario
     }
@@ -219,9 +297,29 @@ export class BotManager {
             if (!this.client) {
                 await this.initializeClient();
             }
-            this.client.initialize();
+            
+            // Verificar que el cliente no fue destruido antes de inicializar
+            if (this.client) {
+                try {
+                    // Verificar si el cliente ya está inicializado
+                    if (this.client.pupPage && !this.client.pupPage.isClosed()) {
+                        logger.info('Client already initialized, skipping...');
+                        return;
+                    }
+                    
+                    this.client.initialize();
+                } catch (error: any) {
+                    if (error.message?.includes('already initialized') || 
+                        error.message?.includes('already running')) {
+                        logger.info('Client already initialized, continuing...');
+                    } else {
+                        throw error;
+                    }
+                }
+            }
         } catch (error) {
             logger.error(`Client initialization error: ${error}`);
+            // No hacer exit, intentar continuar
         }
     }
 

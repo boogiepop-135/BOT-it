@@ -65,30 +65,92 @@
               return API_BASE_URL + '/' + path;
             }
             
-            setInterval(() => {
-                fetch(apiUrl('/health'))
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.qrScanned) {
-                            window.location.href = '/qr';
-                        }
+            let lastStatus = null;
+            let lastQrScanned = null;
+            
+            // Función para actualizar el estado solo cuando hay cambios
+            function updateHealthStatus(data) {
+                const statusChanged = lastStatus !== data.status;
+                const qrScannedChanged = lastQrScanned !== data.qrScanned;
+                
+                if (statusChanged || qrScannedChanged || !lastStatus) {
+                    if (!data.qrScanned) {
+                        window.location.href = '/qr';
+                        return;
+                    }
 
-                        document.getElementById('qrScanned').innerHTML = data.qrScanned;
-                        document.getElementById('botContact').innerHTML = data.botContact;
-                        document.getElementById('botPushName').innerHTML = data.botPushName;
-                        document.getElementById('botPlatform').innerHTML = data.botPlatform;
+                    if (statusChanged || !lastStatus) {
                         document.getElementById('status').innerHTML = data.status;
-
                         if (data.status === 'healthy') {
                             document.getElementById('status').style.color = 'green';
                         } else {
                             document.getElementById('status').style.color = 'red';
                         }
+                    }
+                    
+                    if (qrScannedChanged || !lastQrScanned) {
+                        document.getElementById('qrScanned').innerHTML = data.qrScanned;
+                    }
+                    
+                    lastStatus = data.status;
+                    lastQrScanned = data.qrScanned;
+                }
 
-                        document.getElementById('uptime').innerHTML = data.uptime;
-                        document.getElementById('version').innerHTML = data.version;
+                // Actualizar siempre estos campos ya que cambian con el tiempo
+                const botContact = data.botContact || '';
+                const currentBotContact = document.getElementById('botContact').innerHTML;
+                if (currentBotContact !== botContact) {
+                    document.getElementById('botContact').innerHTML = botContact;
+                }
+                
+                const botPushName = data.botPushName || '';
+                const currentBotPushName = document.getElementById('botPushName').innerHTML;
+                if (currentBotPushName !== botPushName) {
+                    document.getElementById('botPushName').innerHTML = botPushName;
+                }
+                
+                const botPlatform = data.botPlatform || '';
+                const currentBotPlatform = document.getElementById('botPlatform').innerHTML;
+                if (currentBotPlatform !== botPlatform) {
+                    document.getElementById('botPlatform').innerHTML = botPlatform;
+                }
+                
+                document.getElementById('uptime').innerHTML = Math.floor(data.uptime || 0) + 's';
+                document.getElementById('version').innerHTML = data.version || '';
+            }
+            
+            // Polling más inteligente: más frecuente si no está healthy, menos frecuente si está healthy
+            let pollInterval = 3000; // 3 segundos por defecto
+            
+            function pollHealth() {
+                fetch(apiUrl('/health'))
+                    .then(response => response.json())
+                    .then(data => {
+                        updateHealthStatus(data);
+                        
+                        // Ajustar intervalo basado en el estado
+                        // Si está healthy, poll cada 5 segundos, si no, cada 2 segundos
+                        const newInterval = data.status === 'healthy' ? 5000 : 2000;
+                        if (newInterval !== pollInterval) {
+                            pollInterval = newInterval;
+                            clearInterval(healthPollInterval);
+                            healthPollInterval = setInterval(pollHealth, pollInterval);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching health status:', error);
+                        // En caso de error, intentar más frecuentemente
+                        pollInterval = 2000;
+                        clearInterval(healthPollInterval);
+                        healthPollInterval = setInterval(pollHealth, pollInterval);
                     });
-            }, 1500);
+            }
+            
+            // Iniciar polling inmediatamente
+            pollHealth();
+            
+            // Configurar intervalo inicial
+            let healthPollInterval = setInterval(pollHealth, pollInterval);
         </script>
     </div>
 </body>

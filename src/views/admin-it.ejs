@@ -2384,18 +2384,14 @@
         const btnSidebar = document.getElementById('whatsapp-btn-sidebar');
         const btnTextSidebar = document.getElementById('whatsapp-btn-text-sidebar');
         
-        console.log('🔍 WhatsApp status check:', data.qrScanned);
-        
         const isConnected = data.qrScanned;
         
         // Update dashboard button
         if (btn && btnText) {
           if (isConnected) {
-            console.log('✅ WhatsApp conectado - cambiando botón a naranja');
             btn.className = 'bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center';
             btnText.textContent = 'Cambiar WhatsApp';
           } else {
-            console.log('❌ WhatsApp NO conectado - botón verde');
             btn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center';
             btnText.textContent = 'Vincular WhatsApp';
           }
@@ -2412,8 +2408,10 @@
           }
         }
         
+        return isConnected; // Retornar estado para ajustar polling
       } catch (error) {
         console.error('Error checking WhatsApp status:', error);
+        return false;
       }
     }
 
@@ -2424,7 +2422,29 @@
       setTimeout(checkWhatsAppStatus, 100);
     }
     
-    setInterval(checkWhatsAppStatus, 5000);
+    // Polling más eficiente: cada 10 segundos cuando está conectado, cada 5 cuando no
+    let statusPollInterval = 10000; // 10 segundos por defecto cuando está conectado
+    let statusInterval = null;
+    
+    function startStatusPolling() {
+        checkWhatsAppStatus().then(isConnected => {
+            // Ajustar intervalo basado en el estado
+            const newInterval = isConnected ? 10000 : 5000;
+            if (newInterval !== statusPollInterval) {
+                statusPollInterval = newInterval;
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                }
+                statusInterval = setInterval(startStatusPolling, statusPollInterval);
+            }
+        });
+    }
+    
+    // Polling inicial después de un delay
+    setTimeout(() => {
+        startStatusPolling();
+        statusInterval = setInterval(startStatusPolling, statusPollInterval);
+    }, 2000); // Esperar 2 segundos antes de empezar polling
 
     // QR Modal Functions
     function openQRModal() {
