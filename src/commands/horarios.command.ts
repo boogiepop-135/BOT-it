@@ -337,21 +337,52 @@ async function processReservaConversation(message: Message, conversation: Reserv
             break;
 
         case 'fecha':
-            const fecha = parsearFecha(texto);
+            // Intentar extraer hora del mensaje también (ej: "el lunes a las 11 am")
+            let fechaDelMensaje = texto;
+            let horaExtraidaDelMensaje: string | null = null;
+            
+            // Buscar hora en el mensaje (buscar patrón "a las X am/pm" o "las X am/pm")
+            const horaEnMensajeRegex = /(?:a\s*las?|las?)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
+            const matchHoraEnMensaje = texto.match(horaEnMensajeRegex);
+            if (matchHoraEnMensaje) {
+                // Construir hora para parsear
+                const horaNum = matchHoraEnMensaje[1];
+                const minutosNum = matchHoraEnMensaje[2] || '00';
+                const ampm = matchHoraEnMensaje[3].toLowerCase();
+                horaExtraidaDelMensaje = parsearHora(`${horaNum}:${minutosNum} ${ampm}`);
+                
+                // Si encontramos hora, extraerla del texto para parsear fecha
+                if (horaExtraidaDelMensaje) {
+                    fechaDelMensaje = texto.replace(horaEnMensajeRegex, '').trim();
+                    // Limpiar espacios extra y palabras comunes
+                    fechaDelMensaje = fechaDelMensaje.replace(/^\s*(el|la|las|los)\s+/i, '').trim();
+                }
+            }
+            
+            const fecha = parsearFecha(fechaDelMensaje);
             if (!fecha || !validarFecha(fecha)) {
                 await message.reply(
-                    `❌ Fecha no válida. Ejemplos: "mañana", "15/01/2024", "hoy"`
+                    `❌ Fecha no válida. Ejemplos:\n` +
+                    `• "mañana" o "hoy"\n` +
+                    `• "lunes" o "martes"\n` +
+                    `• "15/01/2024" o "3 de noviembre 2025"\n` +
+                    `• "el 3 de noviembre del 2025"`
                 );
                 return;
             }
             conversation.fecha = fecha;
             
-            // Si ya tenemos hora_inicio del mensaje inicial, saltar ese paso
+            // Si extrajimos hora del mensaje, usarla
+            if (horaExtraidaDelMensaje) {
+                conversation.hora_inicio = horaExtraidaDelMensaje;
+            }
+            
+            // Si ya tenemos hora_inicio (del mensaje inicial o extraída), saltar ese paso
             if (conversation.hora_inicio) {
                 conversation.step = 'hora_fin';
                 let mensaje = `✅ Fecha: ${fecha}\n✅ Hora inicio: ${conversation.hora_inicio}`;
                 if (!conversation.hora_fin) {
-                    mensaje += `\n\n¿Hora de fin? (HH:MM)`;
+                    mensaje += `\n\n¿Hora de fin? (HH:MM o ej: "3 pm")`;
                 } else {
                     conversation.step = 'titulo';
                     mensaje += `\n✅ Hora fin: ${conversation.hora_fin}`;
@@ -362,14 +393,14 @@ async function processReservaConversation(message: Message, conversation: Reserv
                 await message.reply(mensaje);
             } else {
                 conversation.step = 'hora_inicio';
-                await message.reply(`✅ Fecha: ${fecha}\n\n¿Hora de inicio? (HH:MM, ej: 14:00)`);
+                await message.reply(`✅ Fecha: ${fecha}\n\n¿Hora de inicio? (HH:MM o ej: "11 am")`);
             }
             break;
 
         case 'hora_inicio':
             const horaInicio = parsearHora(texto);
             if (!horaInicio || !validarHora(horaInicio)) {
-                await message.reply(`❌ Formato inválido. Usa HH:MM (ej: 14:00)`);
+                await message.reply(`❌ Formato inválido. Usa HH:MM o ej: "11 am", "2:30 pm", "14:00"`);
                 return;
             }
             conversation.hora_inicio = horaInicio;
@@ -400,7 +431,7 @@ async function processReservaConversation(message: Message, conversation: Reserv
         case 'hora_fin':
             const horaFin = parsearHora(texto);
             if (!horaFin || !validarHora(horaFin)) {
-                await message.reply(`❌ Formato inválido. Usa HH:MM (ej: 16:00)`);
+                await message.reply(`❌ Formato inválido. Usa HH:MM o ej: "3 pm", "16:00"`);
                 return;
             }
 

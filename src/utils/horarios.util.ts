@@ -86,6 +86,78 @@ export function parsearFecha(fechaTexto: string): string | null {
         return formatFecha(mañana);
     }
     
+    // Días de la semana en español
+    const diasSemana = {
+        'lunes': 1, 'martes': 2, 'miércoles': 3, 'miercoles': 3, 'jueves': 4,
+        'viernes': 5, 'sábado': 6, 'sabado': 6, 'domingo': 0,
+        'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
+        'friday': 5, 'saturday': 6, 'sunday': 0
+    };
+    
+    // Buscar día de la semana
+    for (const [diaNombre, diaSemana] of Object.entries(diasSemana)) {
+        if (fechaTextoLower.includes(diaNombre)) {
+            const hoyDiaSemana = hoy.getDay();
+            let diasDiferencia = diaSemana - hoyDiaSemana;
+            
+            // Si es el mismo día, usar hoy
+            if (diasDiferencia === 0) {
+                return formatFecha(hoy);
+            }
+            
+            // Si el día ya pasó esta semana, calcular para la próxima semana
+            if (diasDiferencia <= 0) {
+                diasDiferencia += 7;
+            }
+            
+            const fechaObjetivo = new Date(hoy);
+            fechaObjetivo.setDate(hoy.getDate() + diasDiferencia);
+            return formatFecha(fechaObjetivo);
+        }
+    }
+    
+    // Formato: "el 3 de noviembre del 2025" o "3 de noviembre 2025"
+    const formatoEspañol = /el?\s*(\d{1,2})\s+de\s+(\w+)\s+(?:del?\s*)?(\d{4})/i;
+    const matchEspañol = fechaTexto.match(formatoEspañol);
+    if (matchEspañol) {
+        const dia = parseInt(matchEspañol[1]);
+        const mesNombre = matchEspañol[2].toLowerCase();
+        const año = parseInt(matchEspañol[3]);
+        
+        const meses = {
+            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+            'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,
+            'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+            'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12
+        };
+        
+        const mes = meses[mesNombre];
+        if (mes && dia >= 1 && dia <= 31 && año >= 2000 && año <= 2100) {
+            return `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        }
+    }
+    
+    // Formato: "3 noviembre 2025" sin "de"
+    const formatoEspañol2 = /(\d{1,2})\s+(\w+)\s+(\d{4})/i;
+    const matchEspañol2 = fechaTexto.match(formatoEspañol2);
+    if (matchEspañol2) {
+        const dia = parseInt(matchEspañol2[1]);
+        const mesNombre = matchEspañol2[2].toLowerCase();
+        const año = parseInt(matchEspañol2[3]);
+        
+        const meses = {
+            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+            'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,
+            'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+            'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12
+        };
+        
+        const mes = meses[mesNombre];
+        if (mes && dia >= 1 && dia <= 31 && año >= 2000 && año <= 2100) {
+            return `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        }
+    }
+    
     // Intentar parsear como fecha
     try {
         // Formato: DD/MM/YYYY o DD-MM-YYYY
@@ -162,12 +234,32 @@ export function parsearHora(horaTexto: string): string | null {
         }
     }
     
-    // Formato: 10am, 2pm, etc.
-    const regexAmPm = /^(\d{1,2})\s*(am|pm)$/i;
+    // Formato: 10am, 2pm, etc. (mejorado para encontrar en texto más largo)
+    // También busca "a las 11 am" o "11:00 am"
+    const regexAmPm = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
     const matchAmPm = horaTextoLower.match(regexAmPm);
     if (matchAmPm) {
         let hora = parseInt(matchAmPm[1]);
-        const ampm = matchAmPm[2].toLowerCase();
+        const minutos = matchAmPm[2] ? parseInt(matchAmPm[2]) : 0;
+        const ampm = matchAmPm[3].toLowerCase();
+        
+        if (ampm === 'pm' && hora !== 12) {
+            hora += 12;
+        } else if (ampm === 'am' && hora === 12) {
+            hora = 0;
+        }
+        
+        if (hora >= 0 && hora < 24 && minutos >= 0 && minutos < 60) {
+            return `${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+        }
+    }
+    
+    // Formato: solo número seguido de am/pm sin espacios (ej: "11am")
+    const regexAmPmSinEspacio = /^(\d{1,2})(am|pm)$/i;
+    const matchAmPmSinEspacio = horaTextoLower.match(regexAmPmSinEspacio);
+    if (matchAmPmSinEspacio) {
+        let hora = parseInt(matchAmPmSinEspacio[1]);
+        const ampm = matchAmPmSinEspacio[2].toLowerCase();
         
         if (ampm === 'pm' && hora !== 12) {
             hora += 12;
