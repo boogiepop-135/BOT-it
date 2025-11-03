@@ -13,13 +13,26 @@ const path = require('path');
 
 import { isITRelated } from "./ticket.command";
 
+// Anti-spam: recuerda la última vez que se envió el bloque de ayuda por usuario
+const lastHelpMap = new Map<string, number>();
+
 export const run = async (message: Message, args: string[], userI18n: UserI18n) => {
     let query = args.join(" ");
     const chat = await message.getChat();
     
-    // Detectar saludos simples
-    const saludosSimples = ['hola', 'hi', 'hello', 'buenos días', 'buenas tardes', 'buenas noches', 'hey'];
-    const esSaludoSimple = saludosSimples.includes(query.toLowerCase().trim());
+    // Detectar saludos simples (normalizando tildes, signos y nombres)
+    const normalize = (s: string) => s
+        .toLowerCase()
+        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+        .replace(/[!¡¿?.,:\-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const nq = normalize(query);
+    const saludosSimples = [
+        'hola', 'hi', 'hello', 'hey',
+        'buenos dias', 'buen dia', 'buenas tardes', 'buenas noches'
+    ];
+    const esSaludoSimple = saludosSimples.some(g => nq.startsWith(g));
     
     // Verificar si hay una conversación activa de ticket o reserva
     try {
@@ -355,19 +368,30 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         return;
     }
     
-    // Si no es sobre IT, responder como bot IT general (solo si no es saludo simple)
-    if (query && !esSaludoSimple) {
-        await message.reply(
-            `🔧 *Soporte IT - San Cosme Orgánico*\n\n` +
-            `Para crear un ticket de soporte técnico, simplemente escribe:\n\n` +
-            `\`ticket\` o \`!ticket\`\n\n` +
-            `O describe tu problema:\n` +
-            `• "La impresora no funciona"\n` +
-            `• "No puedo acceder al correo"\n` +
-            `• "El POS se cayó"\n\n` +
-            `Escribe \`!help\` para ver todos los comandos.`
-        );
-        return;
+    // Si no es sobre IT: mostrar ayuda solo para mensajes muy cortos y con cooldown
+    if (query && !esSaludoSimple && nq.length <= 12) {
+        try {
+            const contact = await message.getContact();
+            const last = lastHelpMap.get(contact.number) || 0;
+            const now = Date.now();
+            // Cooldown de 3 minutos
+            if (now - last > 3 * 60 * 1000) {
+                await message.reply(
+                    `🔧 *Soporte IT - San Cosme Orgánico*\n\n` +
+                    `Para crear un ticket de soporte técnico, simplemente escribe:\n\n` +
+                    `\`ticket\` o \`!ticket\`\n\n` +
+                    `O describe tu problema:\n` +
+                    `• "La impresora no funciona"\n` +
+                    `• "No puedo acceder al correo"\n` +
+                    `• "El POS se cayó"\n\n` +
+                    `Escribe \`!help\` para ver todos los comandos.`
+                );
+                lastHelpMap.set(contact.number, now);
+                return;
+            }
+        } catch (e) {
+            // si falla obtener contacto, no spamear
+        }
     }
 
     if ((!query || esSaludoSimple) && message.type !== MessageTypes.VOICE) {
