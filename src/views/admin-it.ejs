@@ -1870,12 +1870,12 @@
   <!-- Modal Sheets Integrations -->
   <div id="sheets-backdrop" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
   <div id="sheets-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-4xl rounded-lg shadow-2xl overflow-hidden">
+    <div class="bg-white w-full max-w-5xl rounded-lg shadow-2xl overflow-hidden" style="max-height:85vh;">
       <div class="flex items-center justify-between p-4 border-b">
         <h3 class="text-lg font-semibold">Integraciones con Google Sheets</h3>
         <button id="sheets-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
       </div>
-      <div class="p-4">
+      <div class="p-4 overflow-y-auto" style="max-height: calc(85vh - 56px);">
         <p id="sheets-msg" class="text-sm text-gray-600 mb-3"></p>
         <div id="sheets-list" class="divide-y"></div>
       </div>
@@ -1914,20 +1914,20 @@
 
       function renderRow(collection){
         const row = document.createElement('div');
-        row.className = 'py-3 flex flex-col md:flex-row md:items-center md:space-x-3';
+        row.className = 'py-3 grid grid-cols-1 md:grid-cols-12 gap-3 items-center';
         row.innerHTML = `
-          <div class="flex-1 font-medium">${collection}</div>
-          <div class="flex-1 w-full md:w-auto">
+          <div class="md:col-span-3 font-medium break-words">${collection}</div>
+          <div class="md:col-span-6 w-full">
             <input type="text" placeholder="https://docs.google.com/spreadsheets/d/ID/edit" class="url-input w-full border rounded px-3 py-2" />
           </div>
-          <div class="mt-2 md:mt-0">
-            <button class="connect-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Conectar</button>
+          <div class="md:col-span-3 flex md:justify-end">
+            <button class="connect-btn w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Conectar</button>
           </div>
-          <div class="mt-2 md:mt-0 hidden sheet-select-wrap md:w-64">
+          <div class="hidden sheet-select-wrap md:col-span-6">
             <select class="sheet-select border rounded px-2 py-2 w-full"></select>
           </div>
-          <div class="mt-2 md:mt-0 hidden map-wrap">
-            <button class="map-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded">Vincular</button>
+          <div class="hidden map-wrap md:col-span-3">
+            <button class="map-btn w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded">Vincular</button>
           </div>
         `;
 
