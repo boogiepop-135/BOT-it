@@ -443,7 +443,7 @@
   const projectSelectEl = document.getElementById('projectSelect');
   if (projectSelectEl) {
     projectSelectEl.addEventListener('change', async (ev) => {
-      const value = (ev.target as any)?.value || projectSelectEl['value'];
+      const value = ev.target && ev.target['value'] || projectSelectEl['value'];
       if (value) {
         await renderGantt(value);
       } else {
