@@ -1876,7 +1876,22 @@
         <button id="sheets-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
       </div>
       <div class="p-4 overflow-y-auto" style="max-height: calc(85vh - 56px);">
-        <p id="sheets-msg" class="text-sm text-gray-600 mb-3"></p>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          <p id="sheets-msg" class="text-sm text-gray-600"></p>
+          <div class="flex items-center gap-2">
+            <input id="sheets-filter" type="text" placeholder="Filtrar por nombre" class="border rounded px-3 py-2 w-48" />
+            <select id="sheets-page-size" class="border rounded px-2 py-2">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+            </select>
+            <div class="flex items-center gap-2">
+              <button id="sheets-prev" class="px-3 py-2 border rounded">Prev</button>
+              <span id="sheets-page-info" class="text-sm text-gray-500">1/1</span>
+              <button id="sheets-next" class="px-3 py-2 border rounded">Sig</button>
+            </div>
+          </div>
+        </div>
         <div id="sheets-list" class="divide-y"></div>
       </div>
     </div>
@@ -1891,6 +1906,16 @@
       const closeBtn = document.getElementById('sheets-close');
       const list = document.getElementById('sheets-list');
       const msg = document.getElementById('sheets-msg');
+      const filterInput = document.getElementById('sheets-filter');
+      const pageSizeSel = document.getElementById('sheets-page-size');
+      const prevBtn = document.getElementById('sheets-prev');
+      const nextBtn = document.getElementById('sheets-next');
+      const pageInfo = document.getElementById('sheets-page-info');
+
+      let allCollections = [];
+      let filtered = [];
+      let page = 1;
+      let pageSize = Number(pageSizeSel?.value || 20);
 
       function setMsg(t, kind='info'){
         msg.textContent = t || '';
@@ -1973,19 +1998,53 @@
         return row;
       }
 
+      function renderPage(){
+        // recalcular límites
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        const start = (page - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
+        // render
+        list.innerHTML = '';
+        filtered.slice(start, end).forEach(c => list.appendChild(renderRow(c)));
+        // controles
+        pageInfo.textContent = `${page}/${totalPages}`;
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= totalPages;
+      }
+
+      function applyFilter(){
+        const q = (filterInput?.value || '').toLowerCase().trim();
+        filtered = q ? allCollections.filter(c => c.toLowerCase().includes(q)) : [...allCollections];
+        page = 1;
+        renderPage();
+      }
+
       async function openAndRender(){
         setMsg('Cargando colecciones...');
         list.innerHTML = '';
         open();
-        const cols = await loadCollections();
-        if (cols.length === 0) { setMsg('No hay colecciones disponibles'); return; }
+        allCollections = await loadCollections();
+        if (allCollections.length === 0) { setMsg('No hay colecciones disponibles'); return; }
         setMsg('');
-        cols.forEach(c => list.appendChild(renderRow(c)));
+        filtered = [...allCollections];
+        renderPage();
       }
 
       openBtn.addEventListener('click', (e) => { e.preventDefault(); openAndRender(); });
       closeBtn.addEventListener('click', close);
       backdrop.addEventListener('click', close);
+
+      // Eventos de paginación y filtro
+      if (filterInput) {
+        filterInput.addEventListener('input', () => applyFilter());
+      }
+      if (pageSizeSel) {
+        pageSizeSel.addEventListener('change', () => { pageSize = Number(pageSizeSel.value || 20); page = 1; renderPage(); });
+      }
+      prevBtn.addEventListener('click', () => { if (page > 1) { page -= 1; renderPage(); } });
+      nextBtn.addEventListener('click', () => { page += 1; renderPage(); });
     })();
   </script>
 
