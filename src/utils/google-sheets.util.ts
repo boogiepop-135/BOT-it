@@ -151,16 +151,41 @@ export async function writeRange(
       }
     }
 
+    // Expand range to cover all rows/cols when se pasa solo celda inicial (ej: Hoja 1!A1)
+    let expandedRange = range;
+    try {
+      const m = range.match(/^(.*)!([A-Z]+)(\d+)$/);
+      if (m) {
+        const sheet = m[1];
+        const startColLetters = m[2];
+        const startRow = parseInt(m[3], 10);
+        const numRows = values.length;
+        const numCols = Math.max(0, ...values.map(r => r.length));
+        // Convert column letters to index
+        const colToIndex = (s: string) => s.split('').reduce((acc, ch) => acc * 26 + (ch.charCodeAt(0) - 64), 0);
+        const indexToCol = (n: number) => {
+          let res = '';
+          while (n > 0) { const rem = (n - 1) % 26; res = String.fromCharCode(65 + rem) + res; n = Math.floor((n - 1) / 26); }
+          return res;
+        };
+        const startColIndex = colToIndex(startColLetters);
+        const endColIndex = startColIndex + Math.max(0, numCols - 1);
+        const endColLetters = indexToCol(endColIndex);
+        const endRow = startRow + Math.max(0, numRows - 1);
+        expandedRange = `${sheet}!${startColLetters}${startRow}:${endColLetters}${endRow}`;
+      }
+    } catch { /* noop */ }
+
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId,
-      range,
+      range: expandedRange,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values
       }
     });
 
-    logger.info(`✅ Rango actualizado: ${range} (${values.length} filas)`);
+    logger.info(`✅ Rango actualizado: ${expandedRange} (${values.length} filas)`);
     return true;
   } catch (error: any) {
     logger.error(`❌ Error escribiendo rango ${range}:`, error);
