@@ -2,7 +2,7 @@ import express from 'express';
 import logger from '../../configs/logger.config';
 import { authenticate, authorizeAdmin } from '../middlewares/auth.middleware';
 import { SheetIntegrationModel } from '../models/sheet-integration.model';
-import { initializeGoogleSheets, getSpreadsheetMetadata, clearSheet, ensureSheetExists, writeRange } from '../../utils/google-sheets.util';
+import { initializeGoogleSheets, getSpreadsheetMetadata, ensureSheetExists, writeRange, readRange } from '../../utils/google-sheets.util';
 import mongoose from 'mongoose';
 
 export const router = express.Router();
@@ -153,8 +153,19 @@ export default function sheetsApi() {
             }
 
             await ensureSheetExists(spreadsheetId, sheetName);
-            await clearSheet(spreadsheetId, sheetName);
-            const ok = await writeRange(spreadsheetId, `${sheetName}!A1`, rows);
+            // Detectar si la hoja ya tiene contenido
+            const existing = await readRange(spreadsheetId, `${sheetName}!A:ZZZ`);
+            const hasContent = Array.isArray(existing) && existing.length > 0 && existing.some(r => Array.isArray(r) && r.some(v => String(v||'').trim() !== ''));
+            let ok = false;
+            if (!hasContent) {
+                // Hoja vacía: escribir headers + datos desde A1
+                ok = await writeRange(spreadsheetId, `${sheetName}!A1`, rows);
+            } else {
+                // Hoja con contenido: si la primera fila ya parece header, solo anexar datos
+                const dataRows = rows.slice(1);
+                const lastRow = existing.length;
+                ok = dataRows.length === 0 ? true : await writeRange(spreadsheetId, `${sheetName}!A${lastRow+1}`, dataRows);
+            }
             if (!ok) return res.status(500).json({ error: 'Falló escritura en Sheets' });
             res.json({ success: true, message: `Sincronizados ${docs.length} registros de ${collection} a ${sheetName}` });
         } catch (error) {
