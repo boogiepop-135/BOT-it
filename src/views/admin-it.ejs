@@ -1103,6 +1103,24 @@
                 </div>
                 <button data-id="${item._id}" class="gs-refresh bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-sm">Ver hojas</button>
               </div>
+              ${Array.isArray(item.mappings) && item.mappings.length ? `
+              <div class="mt-3">
+                <div class="text-sm font-medium text-gray-700 mb-1">Vinculaciones actuales</div>
+                <div class="space-y-2">
+                  ${item.mappings.map(m => `
+                    <div class=\"flex items-center justify-between bg-gray-50 rounded p-2\">
+                      <div class=\"text-sm text-gray-700\">
+                        <span class=\"inline-block px-2 py-0.5 rounded bg-green-100 text-green-800 mr-2\">Vinculado</span>
+                        Hoja <strong>${m.sheetName}</strong> → Colección <strong>${m.collection}</strong>
+                      </div>
+                      <div class=\"flex gap-2\">
+                        <button data-sync=\"${item._id}|${m.collection}\" class=\"text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded\">Sincronizar ahora</button>
+                        <button data-unlink=\"${item._id}|${m.collection}\" class=\"text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded\">Desvincular</button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>` : ''}
               <div class="mt-3 hidden" id="gs-block-${item._id}">
                 <div class="text-sm text-gray-600 mb-2">Selecciona una hoja y mapea a una colección</div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1148,9 +1166,59 @@
                   headers:{'Content-Type':'application/json'},
                   body: JSON.stringify({ sheetName: sheet, collection: col })
                 });
-                setMsg('Mapeo guardado','success');
+                // Sincronizar inmediatamente tras mapear
+                await fetch(`/crm/sheets/${id}/sync`,{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json'},
+                  body: JSON.stringify({ collection: col })
+                });
+                setMsg('Mapeo guardado y sincronizado','success');
+                await renderList();
               }catch(err){ setMsg('Error guardando mapeo','error'); }
               finally { e.currentTarget.disabled = false; }
+            })
+          });
+
+          // Desvincular
+          list.querySelectorAll('[data-unlink]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+              const val = e.currentTarget.getAttribute('data-unlink') || '';
+              const [id, col] = val.split('|');
+              if (!id || !col) return;
+              if (!confirm(`¿Desvincular la colección "${col}"?`)) return;
+              e.currentTarget.disabled = true;
+              try{
+                await fetch(`/crm/sheets/${id}/map`,{
+                  method:'DELETE',
+                  headers:{'Content-Type':'application/json'},
+                  body: JSON.stringify({ collection: col })
+                });
+                setMsg('Colección desvinculada','success');
+                await renderList();
+              }catch(err){ setMsg('Error al desvincular','error'); }
+              finally { e.currentTarget.disabled = false; }
+            })
+          });
+
+          // Sincronizar ahora
+          list.querySelectorAll('[data-sync]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+              const val = e.currentTarget.getAttribute('data-sync') || '';
+              const [id, col] = val.split('|');
+              if (!id || !col) return;
+              e.currentTarget.disabled = true;
+              const old = e.currentTarget.textContent;
+              try{
+                e.currentTarget.textContent = 'Sincronizando...';
+                const resp = await fetch(`/crm/sheets/${id}/sync`,{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json'},
+                  body: JSON.stringify({ collection: col })
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                setMsg('Sincronización completa','success');
+              }catch(err){ setMsg('Error al sincronizar','error'); }
+              finally { e.currentTarget.disabled = false; if (old) e.currentTarget.textContent = old; }
             })
           });
         } catch (e){

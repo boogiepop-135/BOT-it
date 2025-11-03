@@ -169,6 +169,61 @@ export async function writeRange(
 }
 
 /**
+ * Limpia completamente el contenido de una hoja (todas las celdas)
+ */
+export async function clearSheet(
+  spreadsheetId: string,
+  sheetName: string
+): Promise<boolean> {
+  try {
+    if (!sheetsClient) {
+      const initialized = await initializeGoogleSheets();
+      if (!initialized) {
+        throw new Error('Google Sheets API no inicializada');
+      }
+    }
+    await sheetsClient.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${sheetName}!A:ZZZ`
+    });
+    logger.info(`✅ Hoja limpiada: ${sheetName}`);
+    return true;
+  } catch (error: any) {
+    logger.error(`❌ Error limpiando hoja ${sheetName}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Asegura que una hoja exista; si no, la crea
+ */
+export async function ensureSheetExists(
+  spreadsheetId: string,
+  sheetName: string
+): Promise<boolean> {
+  try {
+    if (!sheetsClient) {
+      const initialized = await initializeGoogleSheets();
+      if (!initialized) return false;
+    }
+    const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
+    const exists = meta.data.sheets?.some(s => s.properties?.title === sheetName);
+    if (exists) return true;
+    await sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: sheetName } } }]
+      }
+    });
+    logger.info(`✅ Hoja creada: ${sheetName}`);
+    return true;
+  } catch (error: any) {
+    logger.error(`❌ Error asegurando hoja ${sheetName}:`, error);
+    return false;
+  }
+}
+
+/**
  * Lee datos de un rango de Google Sheets
  */
 export async function readRange(

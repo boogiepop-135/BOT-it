@@ -2,7 +2,7 @@ import express from 'express';
 import logger from '../../configs/logger.config';
 import { authenticate, authorizeAdmin } from '../middlewares/auth.middleware';
 import { SheetIntegrationModel } from '../models/sheet-integration.model';
-import { initializeGoogleSheets, getSpreadsheetMetadata } from '../../utils/google-sheets.util';
+import { initializeGoogleSheets, getSpreadsheetMetadata, clearSheet, ensureSheetExists, writeRange } from '../../utils/google-sheets.util';
 import mongoose from 'mongoose';
 
 export const router = express.Router();
@@ -104,6 +104,62 @@ export default function sheetsApi() {
         } catch (error) {
             logger.error('Error guardando mapeo:', error);
             res.status(500).json({ error: 'Error guardando mapeo' });
+        }
+    });
+
+    // Desvincular una colección (quitar mapeo)
+    router.delete('/:id/map', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { collection } = req.body;
+            if (!collection) return res.status(400).json({ error: 'Colección requerida' });
+            const integ = await SheetIntegrationModel.findById(id);
+            if (!integ) return res.status(404).json({ error: 'Integración no encontrada' });
+            integ.mappings = (integ.mappings || []).filter(m => m.collection !== collection);
+            await integ.save();
+            res.json({ success: true, data: integ });
+        } catch (error) {
+            logger.error('Error desvinculando mapeo:', error);
+            res.status(500).json({ error: 'Error desvinculando mapeo' });
+        }
+    });
+
+    // Sincronizar: volcar datos de una colección a su hoja mapeada
+    router.post('/:id/sync', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { collection } = req.body;
+            if (!collection) return res.status(400).json({ error: 'Colección requerida' });
+            const integ = await SheetIntegrationModel.findById(id);
+            if (!integ) return res.status(404).json({ error: 'Integración no encontrada' });
+            const mapping = (integ.mappings || []).find(m => m.collection === collection);
+            if (!mapping) return res.status(400).json({ error: 'No existe mapeo para esta colección' });
+
+            const sheetName = mapping.sheetName;
+            const spreadsheetId = integ.spreadsheetId;
+
+            const db = mongoose.connection.db;
+            if (!db) return res.status(500).json({ error: 'DB no disponible' });
+            const docs = await db.collection(collection).find({}).limit(5000).toArray();
+            const headers = mapping.fieldMap ? Object.values(mapping.fieldMap) : Object.keys(docs[0] || {}).filter(k => k !== '_id');
+            const rows: any[][] = [];
+            rows.push(headers);
+            for (const doc of docs) {
+                if (mapping.fieldMap) {
+                    rows.push(Object.keys(mapping.fieldMap).map(src => String((doc as any)[src] ?? '')));
+                } else {
+                    rows.push(headers.map(h => String((doc as any)[h] ?? '')));
+                }
+            }
+
+            await ensureSheetExists(spreadsheetId, sheetName);
+            await clearSheet(spreadsheetId, sheetName);
+            const ok = await writeRange(spreadsheetId, `${sheetName}!A1`, rows);
+            if (!ok) return res.status(500).json({ error: 'Falló escritura en Sheets' });
+            res.json({ success: true, message: `Sincronizados ${docs.length} registros de ${collection} a ${sheetName}` });
+        } catch (error) {
+            logger.error('Error sincronizando colección a hoja:', error);
+            res.status(500).json({ error: 'Error al sincronizar' });
         }
     });
 
