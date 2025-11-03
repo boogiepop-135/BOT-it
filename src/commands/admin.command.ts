@@ -581,3 +581,99 @@ async function mostrarEstadisticas(message: Message) {
     }
 }
 
+async function verTicketsAbiertos(message: Message) {
+    try {
+        const { TicketModel } = await import('../crm/models/ticket.model');
+        
+        const tickets = await TicketModel.find({
+            status: { $in: ['open', 'assigned', 'in_progress'] }
+        })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+
+        if (tickets.length === 0) {
+            await message.reply('✅ No hay tickets abiertos pendientes.');
+            return;
+        }
+
+        let lista = `🔧 *Tickets Abiertos* (Mostrando últimos 10)\n\n`;
+        
+        tickets.forEach((ticket: any, index: number) => {
+            const prioridad = ticket.priority || 'medium';
+            const emojiPrioridad = prioridad === 'urgent' ? '🔴' : prioridad === 'high' ? '🟠' : prioridad === 'medium' ? '🟡' : '🟢';
+            const estado = ticket.status === 'open' ? 'Abierto' : ticket.status === 'assigned' ? 'Asignado' : 'En Progreso';
+            
+            lista += `${index + 1}. ${emojiPrioridad} *${ticket.ticketNumber || 'N/A'}*\n`;
+            lista += `   📝 ${ticket.title || 'Sin título'}\n`;
+            lista += `   📍 Sucursal: ${ticket.sucursal || 'N/A'}\n`;
+            lista += `   🏷️ Categoría: ${ticket.category || 'N/A'}\n`;
+            lista += `   📊 Estado: ${estado}\n`;
+            lista += `   📅 Creado: ${new Date(ticket.createdAt).toLocaleDateString('es-MX')}\n\n`;
+        });
+
+        await message.reply(lista);
+    } catch (error: any) {
+        logger.error("Error listando tickets:", error);
+        await message.reply(`❌ Error al obtener tickets: ${error.message || 'Error desconocido'}`);
+    }
+}
+
+async function iniciarResolverTicket(message: Message, userNumber: string) {
+    const conversation: AdminConversation = {
+        step: 'resolve_ticket',
+        action: 'resolve'
+    };
+    conversations.set(userNumber, conversation);
+    
+    await message.reply(
+        `✅ *Resolver Ticket*\n\n` +
+        `¿Cuál es el número o ID del ticket que quieres resolver?\n\n` +
+        `Ejemplos:\n` +
+        `• TKT-000001\n` +
+        `• 69081eb4f040bc571433931b\n\n` +
+        `Escribe el número del ticket:`
+    );
+}
+
+async function mostrarMetricasTickets(message: Message) {
+    try {
+        const { TicketModel } = await import('../crm/models/ticket.model');
+        
+        const total = await TicketModel.countDocuments();
+        const abiertos = await TicketModel.countDocuments({ status: { $in: ['open', 'assigned', 'in_progress'] } });
+        const resueltos = await TicketModel.countDocuments({ status: 'resolved' });
+        const cerrados = await TicketModel.countDocuments({ status: 'closed' });
+        
+        const ticketsPorCategoria = await TicketModel.aggregate([
+            {
+                $group: {
+                    _id: '$category',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
+        let stats = `📊 *Métricas de Tickets*\n\n`;
+        stats += `📋 *ESTADO GENERAL*\n`;
+        stats += `• Total: ${total}\n`;
+        stats += `• Abiertos: ${abiertos}\n`;
+        stats += `• Resueltos: ${resueltos}\n`;
+        stats += `• Cerrados: ${cerrados}\n\n`;
+        
+        if (ticketsPorCategoria.length > 0) {
+            stats += `🏷️ *POR CATEGORÍA*\n`;
+            ticketsPorCategoria.slice(0, 5).forEach((cat: any) => {
+                const nombre = cat._id || 'Sin categoría';
+                stats += `• ${nombre}: ${cat.count}\n`;
+            });
+        }
+
+        await message.reply(stats);
+    } catch (error: any) {
+        logger.error("Error mostrando métricas de tickets:", error);
+        await message.reply(`❌ Error al obtener métricas: ${error.message || 'Error desconocido'}`);
+    }
+}
+
