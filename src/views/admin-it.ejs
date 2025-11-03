@@ -423,6 +423,8 @@
         }
         
         console.log('Creando proyecto con body:', body);
+        console.log('Token disponible:', token ? 'Sí' : 'No');
+        console.log('URL:', '/crm/projects');
         
         const response = await fetch('/crm/projects', { 
           method:'POST', 
@@ -433,14 +435,19 @@
           body: JSON.stringify(body) 
         });
         
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
         if (!response.ok) {
           const errorText = await response.text();
+          console.error('Error response text:', errorText);
           let errorData;
           try {
             errorData = JSON.parse(errorText);
           } catch {
             errorData = { error: errorText || 'Error desconocido' };
           }
+          console.error('Error data:', errorData);
           throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
         }
         

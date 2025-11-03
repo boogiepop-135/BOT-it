@@ -5,16 +5,20 @@ import { ROLE_PERMISSIONS } from '../utils/rbac.util';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    logger.info(`Authentication middleware - ${req.method} ${req.path}`);
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
+      logger.warn(`Authentication failed - No token provided for ${req.method} ${req.path}`);
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const decoded = await AuthService.verifyToken(token);
     if (!decoded) {
+      logger.warn(`Authentication failed - Invalid token for ${req.method} ${req.path}`);
       return res.status(401).json({ error: 'Token expired or invalid' });
     }
 
+    logger.info(`Authentication successful - User: ${decoded.userId}, Role: ${decoded.role}`);
     req.user = decoded;
     next();
   } catch (error) {
@@ -60,17 +64,25 @@ export const authorizeRoles = (...roles: string[]) => {
 export const authorizePermission = (resource: string, action: 'read' | 'write' | 'manage') => {
   return (req: Request, res: Response, next: NextFunction) => {
     const role = req.user?.role;
-    if (!role) return res.status(401).json({ error: 'Authentication required' });
+    logger.info(`Authorization check - ${req.method} ${req.path} - Role: ${role}, Resource: ${resource}, Action: ${action}`);
+    
+    if (!role) {
+      logger.warn(`Authorization failed - No role found for ${req.method} ${req.path}`);
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
     const perms = ROLE_PERMISSIONS[role] || {};
     
     // Verificar si tiene permiso para todo ('*')
     const hasWildcardManage = perms['*']?.includes('manage');
     if (hasWildcardManage) {
+      logger.info(`Authorization granted - Wildcard manage permission for role: ${role}`);
       return next(); // Admin/CEO tiene acceso a todo
     }
     
     // Super Admin (Levi) tiene acceso total
     if (role === 'levi' || role === 'super_admin') {
+      logger.info(`Authorization granted - Super admin access for role: ${role}`);
       return next();
     }
     
@@ -78,12 +90,21 @@ export const authorizePermission = (resource: string, action: 'read' | 'write' |
     if (role === 'salma' || role === 'francisco' || role === 'desarrollo_estrategia_inrra' || role === 'boss' || role === 'ceo') {
       const rolePerms = ROLE_PERMISSIONS[role] || {};
       const allowed = rolePerms[resource]?.includes(action) || rolePerms[resource]?.includes('manage');
-      if (allowed) return next();
+      if (allowed) {
+        logger.info(`Authorization granted - Special role permission for role: ${role}`);
+        return next();
+      }
     }
     
     // Verificar permiso específico del recurso
     const allowed = perms[resource]?.includes(action) || perms[resource]?.includes('manage');
-    if (!allowed) return res.status(403).json({ error: 'Forbidden' });
+    if (!allowed) {
+      logger.warn(`Authorization denied - Role: ${role}, Resource: ${resource}, Action: ${action}`);
+      logger.warn(`Available permissions for role ${role}:`, JSON.stringify(perms));
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    
+    logger.info(`Authorization granted - Resource permission for role: ${role}`);
     next();
   };
 };
