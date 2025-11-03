@@ -466,6 +466,13 @@
           
           const result = await response.json();
           console.log('Proyecto creado exitosamente:', result);
+          console.log('Result ID:', result._id || result.id);
+          console.log('Result name:', result.name);
+          
+          if (!result._id && !result.id) {
+            console.error('⚠️ El proyecto no tiene ID en la respuesta:', result);
+            throw new Error('El servidor no devolvió un ID para el proyecto creado');
+          }
           
           // Limpiar formulario
           form.reset();
@@ -474,13 +481,18 @@
             projMsg.className = 'text-sm text-green-600 h-5 mt-2';
           }
           
-          // Recargar lista de proyectos
+          // Recargar lista de proyectos (esperar un poco para que la BD se actualice)
+          await new Promise(resolve => setTimeout(resolve, 500));
           await loadProjectsForGantt();
           
           // Seleccionar el proyecto recién creado
-          if (projectSelect && result._id) {
-            projectSelect.value = result._id;
-            await renderGantt(result._id);
+          const projectId = result._id || result.id;
+          if (projectSelect && projectId) {
+            projectSelect.value = projectId;
+            console.log('Seleccionando proyecto:', projectId);
+            await renderGantt(projectId);
+          } else {
+            console.warn('No se pudo seleccionar el proyecto en el selector');
           }
           
           setTimeout(() => {

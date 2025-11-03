@@ -24,6 +24,9 @@ const ProjectSchema = new Schema<IProject>({
 	progress: { type: Number, default: 0, min: 0, max: 100 },
 	budget: Number,
 	tags: [String]
-}, { timestamps: true });
+}, { 
+	timestamps: true,
+	collection: 'projects' // Especificar explícitamente el nombre de la colección
+});
 
 export const ProjectModel = mongoose.models.Project || mongoose.model<IProject>('Project', ProjectSchema);

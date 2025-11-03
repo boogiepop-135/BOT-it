@@ -74,17 +74,32 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
         
         const p = new ProjectModel(body);
         logger.info('ProjectModel instance created, saving...');
+        logger.info('Project document before save:', JSON.stringify(p.toObject ? p.toObject() : p));
         
-        const saved = await p.save();
-        logger.info('✅ Project created successfully!');
-        logger.info('   - ID:', saved._id);
-        logger.info('   - Name:', saved.name);
-        logger.info('   - Status:', saved.status);
-        logger.info('   - Progress:', saved.progress);
-        
-        // Convertir a objeto plano para respuesta JSON
-        const savedObj = saved.toObject ? saved.toObject() : saved;
-        res.status(201).json(savedObj);
+        try {
+            const saved = await p.save();
+            logger.info('✅ Project saved to database successfully!');
+            logger.info('   - ID:', saved._id);
+            logger.info('   - Name:', saved.name);
+            logger.info('   - Status:', saved.status);
+            logger.info('   - Progress:', saved.progress);
+            logger.info('   - Created At:', saved.createdAt);
+            logger.info('   - Collection name:', saved.collection?.name || 'unknown');
+            
+            // Convertir a objeto plano para respuesta JSON
+            const savedObj = saved.toObject ? saved.toObject() : saved;
+            logger.info('Sending response with saved project:', JSON.stringify(savedObj, null, 2));
+            res.status(201).json(savedObj);
+            logger.info('✅ Response sent successfully');
+        } catch (saveError: any) {
+            logger.error('❌ Error during save() operation');
+            logger.error('   - Error name:', saveError?.name);
+            logger.error('   - Error message:', saveError?.message);
+            logger.error('   - Error code:', saveError?.code);
+            logger.error('   - Error codeName:', saveError?.codeName);
+            logger.error('   - Error stack:', saveError?.stack);
+            throw saveError; // Re-throw para que sea capturado por el catch exterior
+        }
     } catch (e:any) {
         logger.error('❌ Create project failed');
         logger.error('   - Error name:', e.name);
