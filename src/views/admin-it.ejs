@@ -1779,6 +1779,15 @@
 
     async function loadProjects() {
       try {
+        const grid = document.getElementById('projects-grid');
+        
+        // Si no existe el elemento, significa que estamos en la sección de Gantt (cascada)
+        // No es necesario cargar proyectos en cards si no existe el grid
+        if (!grid) {
+          console.log('projects-grid no encontrado, usando solo loadProjectsForGantt');
+          return;
+        }
+        
         const response = await fetch('/api/it/projects?limit=20', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -1786,8 +1795,6 @@
         if (handleAuthError(response)) return;
         
         const data = await response.json();
-        
-        const grid = document.getElementById('projects-grid');
         
         if (!data.data || data.data.length === 0) {
           grid.innerHTML = `
