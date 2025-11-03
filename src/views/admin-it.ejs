@@ -397,47 +397,6 @@
     }
     
     reloadBtn?.addEventListener('click', () => renderGantt(projectSelect?.value || ''));
-  // Eliminar proyecto seleccionado
-  document.getElementById('deleteProjectBtn')?.addEventListener('click', async () => {
-    const sel = document.getElementById('projectSelect');
-    const projectId = sel ? sel['value'] : null;
-    if (!projectId) return;
-    if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
-    try {
-      const res = await fetch(`/crm/projects/${projectId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || 'Error HTTP');
-      }
-      // Recargar selector y limpiar vista
-      await window.loadProjectsForGantt();
-      const el = document.getElementById('gantt');
-      const placeholder = document.getElementById('ganttPlaceholder');
-      if (el) el.innerHTML = '';
-      if (placeholder) placeholder.classList.remove('hidden');
-      document.getElementById('tasksSection')?.classList.add('hidden');
-    } catch (e) {
-      alert('Error eliminando proyecto');
-    }
-  });
-  // Completar proyecto y notificar
-  document.getElementById('completeProjectBtn')?.addEventListener('click', async () => {
-    const sel = document.getElementById('projectSelect');
-    const projectId = sel ? sel['value'] : null;
-    if (!projectId) return;
-    if (!confirm('¿Marcar el proyecto como completado y notificar a dirección?')) return;
-    try {
-      const res = await fetch(`/crm/projects/${projectId}/complete`, { method: 'POST' });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || 'Error HTTP');
-      }
-      await renderGantt(projectId);
-      alert('Proyecto completado y notificado.');
-    } catch (e) {
-      alert('Error completando el proyecto');
-    }
-  });
 
   // Cargar Gantt al cambiar selección
   const projectSelectEl = document.getElementById('projectSelect');
@@ -457,23 +416,60 @@
   
   // Delegación de eventos: asegura clicks incluso si los botones se renderizan después
   document.addEventListener('click', async (e) => {
-    const target = e.target as any;
+    const target = e.target;
     const deleteBtn = target && target.closest && target.closest('#deleteProjectBtn');
     const completeBtn = target && target.closest && target.closest('#completeProjectBtn');
     if (deleteBtn) {
+      e.preventDefault();
+      e.stopPropagation();
       const sel = document.getElementById('projectSelect');
       const projectId = sel ? sel['value'] : null;
-      if (!projectId) return;
-      if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+      if (!projectId) {
+        alert('Por favor selecciona un proyecto para eliminar');
+        return;
+      }
+      const projectName = sel.options && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : 'proyecto';
+      if (!confirm(`¿Estás seguro de que quieres eliminar el proyecto "${projectName}"?\n\n⚠️ Esta acción eliminará también todas las tareas asociadas y NO se puede deshacer.`)) {
+        return;
+      }
+      const originalText = deleteBtn.innerHTML;
       try {
-        const resp = await fetch(`/crm/projects/${projectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (!resp.ok) throw new Error(await resp.text());
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...';
+        const response = await fetch(`/crm/projects/${projectId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || 'Error desconocido' };
+          }
+          throw new Error(errorData.error || `Error ${response.status}`);
+        }
+        const result = await response.json();
+        alert(`✅ Proyecto "${projectName}" eliminado exitosamente.\n\nSe eliminaron ${result.deletedTasks || 0} tareas asociadas.`);
+        if (sel) sel.value = '';
         await window.loadProjectsForGantt();
         const el = document.getElementById('gantt'); if (el) el.innerHTML = '';
-        const placeholder = document.getElementById('ganttPlaceholder'); if (placeholder) placeholder.classList.remove('hidden');
+        const placeholder = document.getElementById('ganttPlaceholder'); 
+        if (placeholder) {
+          placeholder.textContent = 'Selecciona un proyecto para ver el diagrama de Gantt';
+          placeholder.classList.remove('hidden');
+        }
         document.getElementById('tasksSection')?.classList.add('hidden');
+        document.getElementById('deleteProjectBtn')?.classList.add('hidden');
+        document.getElementById('completeProjectBtn')?.classList.add('hidden');
       } catch (err) {
-        alert('Error eliminando proyecto');
+        console.error('Error eliminando proyecto:', err);
+        const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
+        alert(`❌ Error al eliminar proyecto: ${errorMsg}`);
+      } finally {
+        deleteBtn.disabled = false;
+        if (originalText) deleteBtn.innerHTML = originalText;
       }
       return;
     }
@@ -493,90 +489,6 @@
       return;
     }
   });
-    
-    // Event listener para eliminar proyecto
-    document.getElementById('deleteProjectBtn')?.addEventListener('click', async () => {
-      const projectId = projectSelect?.value;
-      if (!projectId || projectId === '') {
-        alert('Por favor selecciona un proyecto para eliminar');
-        return;
-      }
-      
-      const projectName = projectSelect?.options[projectSelect.selectedIndex]?.textContent || 'proyecto';
-      
-      if (!confirm(`¿Estás seguro de que quieres eliminar el proyecto "${projectName}"?\n\n⚠️ Esta acción eliminará también todas las tareas asociadas y NO se puede deshacer.`)) {
-        return;
-      }
-      
-      const deleteBtn = document.getElementById('deleteProjectBtn');
-      const originalText = deleteBtn?.innerHTML;
-      
-      try {
-        if (deleteBtn) {
-          deleteBtn.disabled = true;
-          deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...';
-        }
-        
-        const response = await fetch(`/crm/projects/${projectId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText || 'Error desconocido' };
-          }
-          throw new Error(errorData.error || `Error ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('Proyecto eliminado exitosamente:', result);
-        
-        alert(`✅ Proyecto "${projectName}" eliminado exitosamente.\n\nSe eliminaron ${result.deletedTasks || 0} tareas asociadas.`);
-        
-        // Limpiar selector y recargar proyectos
-        if (projectSelect) {
-          projectSelect.value = '';
-        }
-        const deleteBtnElement = document.getElementById('deleteProjectBtn');
-        if (deleteBtnElement) {
-          deleteBtnElement.classList.add('hidden');
-        }
-        
-        // Ocultar sección de tareas
-        const tasksSection = document.getElementById('tasksSection');
-        if (tasksSection) {
-          tasksSection.classList.add('hidden');
-        }
-        
-        // Limpiar Gantt
-        const ganttEl = document.getElementById('gantt');
-        const ganttPlaceholder = document.getElementById('ganttPlaceholder');
-        if (ganttEl) ganttEl.innerHTML = '';
-        if (ganttPlaceholder) {
-          ganttPlaceholder.textContent = 'Selecciona un proyecto para ver el diagrama de Gantt';
-          ganttPlaceholder.classList.remove('hidden');
-        }
-        
-        // Recargar lista de proyectos
-        await loadProjectsForGantt();
-      } catch (err) {
-        console.error('Error eliminando proyecto:', err);
-        const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
-        alert(`❌ Error al eliminar proyecto: ${errorMsg}`);
-      } finally {
-        if (deleteBtn) {
-          deleteBtn.disabled = false;
-          if (originalText) deleteBtn.innerHTML = originalText;
-        }
-      }
-    });
 
     taskForm?.addEventListener('submit', async (e)=>{
       e.preventDefault(); taskMsg.textContent='';
