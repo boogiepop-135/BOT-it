@@ -86,7 +86,8 @@
       return res.json();
     }
 
-    async function loadProjectsForGantt() {
+    // Función global para cargar proyectos en el selector Gantt
+    window.loadProjectsForGantt = async function loadProjectsForGantt() {
       try {
         const projects = await fetchJSON('/crm/projects', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -392,7 +393,7 @@
         return;
       }
       
-      const deleteBtn = document.getElementById('deleteProjectBtn') as HTMLButtonElement;
+      const deleteBtn = document.getElementById('deleteProjectBtn');
       const originalText = deleteBtn?.innerHTML;
       
       try {
@@ -1802,7 +1803,11 @@
       if (section === 'rh-requests') loadRHRequests();
       if (section === 'projects') {
         loadProjects(); // Cargar proyectos en cards
-        loadProjectsForGantt(); // Cargar proyectos en Gantt
+        if (typeof window.loadProjectsForGantt === 'function') {
+          window.loadProjectsForGantt(); // Cargar proyectos en Gantt
+        } else {
+          console.warn('loadProjectsForGantt no está disponible todavía');
+        }
       }
       if (section === 'users') {
         loadUsers();

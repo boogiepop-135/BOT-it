@@ -436,6 +436,21 @@ export default function (botManager: BotManager) {
         }
     });
 
+    router.get('/payment-reminders/:id', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const reminder = await PaymentReminderModel.findById(req.params.id);
+            
+            if (!reminder) {
+                return res.status(404).json({ error: 'Payment reminder not found' });
+            }
+            
+            res.json(reminder);
+        } catch (error) {
+            logger.error('Failed to fetch payment reminder:', error);
+            res.status(500).json({ error: 'Failed to fetch payment reminder' });
+        }
+    });
+
     router.post('/payment-reminders', authenticate, authorizeAdmin, async (req, res) => {
         try {
             const { title, description, phoneNumber, amount, dueDate, reminderDays, isMonthly, tags } = req.body;
