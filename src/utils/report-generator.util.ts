@@ -321,44 +321,52 @@ export interface BossInfo {
 }
 
 export function getBossInfo(phoneNumber: string): BossInfo | null {
-    // Normalizar número (remover caracteres especiales)
-    const phoneNormalized = phoneNumber.replace(/[^0-9]/g, '');
-    
-    // Buscar en variables de entorno primero
-    if (EnvConfig.SALMA_PHONE && phoneNormalized === EnvConfig.SALMA_PHONE.replace(/[^0-9]/g, '')) {
-        return {
-            name: 'Salma',
-            role: (EnvConfig.SALMA_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
-        };
-    }
-    
-    if (EnvConfig.FRANCISCO_PHONE && phoneNormalized === EnvConfig.FRANCISCO_PHONE.replace(/[^0-9]/g, '')) {
-        return {
-            name: 'Francisco',
-            role: (EnvConfig.FRANCISCO_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
-        };
-    }
-    
-    // Búsqueda por palabras clave como fallback
-    const phoneLower = phoneNumber.toLowerCase().replace(/[^0-9a-z]/g, '');
-    const keywords: Record<string, { name: string; defaultRole: 'boss' | 'ceo' }> = {
-        'salma': { name: 'Salma', defaultRole: 'boss' },
-        'francisco': { name: 'Francisco', defaultRole: 'boss' },
-        'franco': { name: 'Francisco', defaultRole: 'boss' },
-        'frank': { name: 'Francisco', defaultRole: 'boss' }
-    };
-    
-    for (const [key, info] of Object.entries(keywords)) {
-        if (phoneLower.includes(key)) {
+        // Normalizar número (remover caracteres especiales)
+        const phoneNormalized = phoneNumber.replace(/[^0-9]/g, '');
+        
+        // Verificar si es Levi Villarreal (Super Admin)
+        if (EnvConfig.LEVI_PHONE && phoneNormalized === EnvConfig.LEVI_PHONE.replace(/[^0-9]/g, '')) {
             return {
-                name: info.name,
-                role: info.defaultRole
+                name: 'Levi Villarreal',
+                role: 'admin' // Super admin tiene rol admin para permisos
             };
         }
+        
+        // Buscar en variables de entorno primero
+        if (EnvConfig.SALMA_PHONE && phoneNormalized === EnvConfig.SALMA_PHONE.replace(/[^0-9]/g, '')) {
+            return {
+                name: 'Salma',
+                role: (EnvConfig.SALMA_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
+            };
+        }
+        
+        if (EnvConfig.FRANCISCO_PHONE && phoneNormalized === EnvConfig.FRANCISCO_PHONE.replace(/[^0-9]/g, '')) {
+            return {
+                name: 'Francisco',
+                role: (EnvConfig.FRANCISCO_ROLE as 'boss' | 'ceo' | 'admin') || 'boss'
+            };
+        }
+        
+        // Búsqueda por palabras clave como fallback
+        const phoneLower = phoneNumber.toLowerCase().replace(/[^0-9a-z]/g, '');
+        const keywords: Record<string, { name: string; defaultRole: 'boss' | 'ceo' }> = {
+            'salma': { name: 'Salma', defaultRole: 'boss' },
+            'francisco': { name: 'Francisco', defaultRole: 'boss' },
+            'franco': { name: 'Francisco', defaultRole: 'boss' },
+            'frank': { name: 'Francisco', defaultRole: 'boss' }
+        };
+        
+        for (const [key, info] of Object.entries(keywords)) {
+            if (phoneLower.includes(key)) {
+                return {
+                    name: info.name,
+                    role: info.defaultRole
+                };
+            }
+        }
+        
+        return null;
     }
-    
-    return null;
-}
 
 /**
  * Obtener nombre del destinatario desde número de teléfono (compatibilidad)

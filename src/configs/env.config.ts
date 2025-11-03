@@ -24,6 +24,8 @@ class EnvConfig {
     // Roles de los jefes (boss, ceo, admin)
     static SALMA_ROLE = process.env.SALMA_ROLE || 'boss';
     static FRANCISCO_ROLE = process.env.FRANCISCO_ROLE || 'boss';
+    // Número de teléfono de Levi Villarreal (Super Admin)
+    static LEVI_PHONE = process.env.LEVI_PHONE || '';
 
     static validate() {
 

@@ -2529,29 +2529,33 @@
     };
 
     window.changeUserRole = async function(phoneNumber, currentRole) {
-      const roleOptions = [
-        { value: 'user', label: 'Usuario' },
-        { value: 'salma', label: 'Salma' },
-        { value: 'francisco', label: 'Francisco' },
-        { value: 'rh_karina', label: 'RH Karina' },
-        { value: 'rh_nubia', label: 'RH Nubia' },
-        { value: 'desarrollo_estrategia_inrra', label: 'Desarrollo y Estrategia Inrra' },
-        { value: 'boss', label: 'Jefe' },
-        { value: 'ceo', label: 'CEO' },
-        { value: 'admin', label: 'Administrador' }
-      ];
+        const roleOptions = [
+          { value: 'user', label: 'Usuario' },
+          { value: 'salma', label: 'Salma' },
+          { value: 'francisco', label: 'Francisco' },
+          { value: 'rh_karina', label: 'RH Karina' },
+          { value: 'rh_nubia', label: 'RH Nubia' },
+          { value: 'desarrollo_estrategia_inrra', label: 'Desarrollo y Estrategia Inrra' },
+          { value: 'boss', label: 'Jefe' },
+          { value: 'ceo', label: 'CEO' },
+          { value: 'admin', label: 'Administrador' },
+          { value: 'levi', label: 'Levi Villarreal (Super Admin)' },
+          { value: 'super_admin', label: 'Super Administrador' }
+        ];
       
-      const roleLabels = {
-        'user': 'Usuario',
-        'salma': 'Salma',
-        'francisco': 'Francisco',
-        'rh_karina': 'RH Karina',
-        'rh_nubia': 'RH Nubia',
-        'desarrollo_estrategia_inrra': 'Desarrollo y Estrategia Inrra',
-        'boss': 'Jefe',
-        'ceo': 'CEO',
-        'admin': 'Administrador'
-      };
+        const roleLabels = {
+          'user': 'Usuario',
+          'salma': 'Salma',
+          'francisco': 'Francisco',
+          'rh_karina': 'RH Karina',
+          'rh_nubia': 'RH Nubia',
+          'desarrollo_estrategia_inrra': 'Desarrollo y Estrategia Inrra',
+          'boss': 'Jefe',
+          'ceo': 'CEO',
+          'admin': 'Administrador',
+          'levi': 'Levi Villarreal (Super Admin)',
+          'super_admin': 'Super Administrador'
+        };
       
       // Crear un select con todos los roles
       const roleList = roleOptions.map((r, index) => 

@@ -89,6 +89,36 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         return;
     }
     
+    // Detectar si el usuario es Levi (Super Admin) para comandos administrativos
+    try {
+        const contact = await message.getContact();
+        const { ContactModel } = await import('../crm/models/contact.model');
+        const contactDoc = await ContactModel.findOne({ phoneNumber: contact.number });
+        const isLevi = contactDoc?.role === 'levi' || contactDoc?.role === 'super_admin';
+        
+        if (isLevi) {
+            const adminKeywords = [
+                'enviar mensaje', 'mandar mensaje', 'mensaje a',
+                'redireccionar', 'redirigir', 'reenviar',
+                'pausar usuario', 'reanudar usuario', 'activar usuario',
+                'usuarios', 'lista usuarios', 'ver usuarios',
+                'estadisticas', 'estadísticas', 'stats',
+                'admin', 'administración'
+            ];
+            
+            const esAdminRequest = adminKeywords.some(keyword => cleanQuery.includes(keyword));
+            
+            if (esAdminRequest || cleanQuery.startsWith('!admin')) {
+                logger.info(`Admin command intent detected: ${cleanQuery}`);
+                const { run: runAdmin } = await import('./admin.command');
+                await runAdmin(message, args, userI18n);
+                return;
+            }
+        }
+    } catch (error) {
+        // Ignorar errores de detección
+    }
+    
     // Detectar si el usuario es RH (Karina/Nubia) para solicitudes de usuarios
     try {
         const contact = await message.getContact();

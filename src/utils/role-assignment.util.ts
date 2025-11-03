@@ -15,7 +15,9 @@ export function getRoleDisplayName(role: ContactRole): string {
         'desarrollo_estrategia_inrra': 'Desarrollo y Estrategia Inrra',
         'boss': 'Jefe',
         'ceo': 'CEO',
-        'admin': 'Administrador'
+        'admin': 'Administrador',
+        'levi': 'Levi Villarreal',
+        'super_admin': 'Super Administrador'
     };
     
     return roleNames[role] || role;
@@ -34,7 +36,9 @@ export function getRoleDescription(role: ContactRole): string {
         'desarrollo_estrategia_inrra': 'Desarrollo y Estrategia - Inrra',
         'boss': 'Jefe - Acceso ejecutivo',
         'ceo': 'CEO - Acceso completo',
-        'admin': 'Administrador - Acceso total'
+        'admin': 'Administrador - Acceso total',
+        'levi': 'Levi Villarreal - Super Administrador - Acceso total y privilegios administrativos completos',
+        'super_admin': 'Super Administrador - Acceso total y privilegios administrativos completos'
     };
     
     return descriptions[role] || 'usuario del sistema';
@@ -127,6 +131,21 @@ export function generateRoleAssignmentMessage(role: ContactRole, userName: strin
             message += `📊 Ver proyectos y tareas\n`;
             message += `📈 Consultar reportes\n`;
             message += `🎫 Gestionar tickets\n`;
+            break;
+            
+        case 'levi':
+        case 'super_admin':
+            message += `🔧 *¡Bienvenido Levi Villarreal!*\n\n`;
+            message += `Como Super Administrador, tienes acceso completo y privilegios administrativos totales.\n\n`;
+            message += `*Comandos disponibles:*\n`;
+            message += `📤 Enviar mensajes a usuarios específicos\n`;
+            message += `🔄 Redireccionar mensajes entre usuarios\n`;
+            message += `⏸️ Pausar/Reanudar usuarios\n`;
+            message += `👥 Ver lista de usuarios\n`;
+            message += `📊 Ver estadísticas del sistema\n`;
+            message += `🔧 Control total del sistema\n\n`;
+            message += `*Usa "!admin" o escribe "admin" para ver el menú completo.*\n`;
+            message += `*Escribe "enviar mensaje", "pausar usuario", "usuarios", etc. para usar los comandos.*`;
             break;
             
         default:

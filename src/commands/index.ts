@@ -19,7 +19,8 @@ export default {
         horarios: require("./horarios.command"),
         proyectos: require("./proyectos.command"),
         rh: require("./rh.command"),
-    pause: require("./pause.command"),
+        admin: require("./admin.command"),
+        pause: require("./pause.command"),
     stop: require("./stop.command"),
     start: require("./start.command")
 }

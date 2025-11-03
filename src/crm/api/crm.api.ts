@@ -104,7 +104,7 @@ export default function (botManager: BotManager) {
             const { role } = req.body;
             
             // Roles permitidos
-            const allowedRoles = ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin'];
+            const allowedRoles = ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin', 'levi', 'super_admin'];
             
             if (!role || !allowedRoles.includes(role)) {
                 return res.status(400).json({ error: `Role must be one of: ${allowedRoles.join(', ')}` });

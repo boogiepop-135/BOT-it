@@ -39,11 +39,13 @@ export const authorizeRoles = (...roles: string[]) => {
     const userRole = req.user.role;
     
     // Verificar si el usuario tiene uno de los roles permitidos
-    // También verificar roles de contactos (rh_karina, rh_nubia, etc.)
+    // También verificar roles de contactos (rh_karina, rh_nubia, levi, etc.)
     const hasPermission = roles.includes(userRole) || 
                          roles.includes('*') || 
                          userRole === 'admin' || 
                          userRole === 'ceo' ||
+                         userRole === 'levi' ||
+                         userRole === 'super_admin' ||
                          // Verificar si es un rol de contacto compatible
                          (roles.includes('rh_karina') && userRole === 'rh_karina') ||
                          (roles.includes('rh_nubia') && userRole === 'rh_nubia');
@@ -65,6 +67,11 @@ export const authorizePermission = (resource: string, action: 'read' | 'write' |
     const hasWildcardManage = perms['*']?.includes('manage');
     if (hasWildcardManage) {
       return next(); // Admin/CEO tiene acceso a todo
+    }
+    
+    // Super Admin (Levi) tiene acceso total
+    if (role === 'levi' || role === 'super_admin') {
+      return next();
     }
     
     // Verificar permiso específico del recurso

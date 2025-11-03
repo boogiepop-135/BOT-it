@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type ContactRole = 'user' | 'salma' | 'francisco' | 'rh_karina' | 'rh_nubia' | 'desarrollo_estrategia_inrra' | 'boss' | 'ceo' | 'admin';
+export type ContactRole = 'user' | 'salma' | 'francisco' | 'rh_karina' | 'rh_nubia' | 'desarrollo_estrategia_inrra' | 'boss' | 'ceo' | 'admin' | 'levi' | 'super_admin';
 
 export interface IContact extends Document {
     phoneNumber: string;
@@ -26,11 +26,11 @@ const ContactSchema = new Schema<IContact>({
     tags: [{ type: String }],
     botPaused: { type: Boolean, default: false },
     botPausedAt: Date,
-    role: { 
-        type: String, 
-        enum: ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin'], 
-        default: 'user' 
-    }
+        role: { 
+            type: String, 
+            enum: ['user', 'salma', 'francisco', 'rh_karina', 'rh_nubia', 'desarrollo_estrategia_inrra', 'boss', 'ceo', 'admin', 'levi', 'super_admin'], 
+            default: 'user' 
+        }
 }, { timestamps: true });
 
 export const ContactModel = mongoose.model<IContact>('Contact', ContactSchema);
