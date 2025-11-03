@@ -52,6 +52,15 @@ process.on('SIGINT', async () => {
 // Conectar a MongoDB primero, luego inicializar el cliente de WhatsApp
 connectDB().then(async () => {
     logger.info('MongoDB connected successfully, initializing bot...');
+    
+    // Inicializar Google Sheets si está configurado (opcional, no bloquea el inicio)
+    try {
+        const { initializeGoogleSheets } = await import('./utils/google-sheets.util');
+        await initializeGoogleSheets();
+    } catch (error: any) {
+        logger.warn('Google Sheets initialization skipped:', error.message);
+    }
+    
     // Inicializar el cliente después de conectar a MongoDB
     await botManager.initializeClient();
     logger.info('Bot client initialized');

@@ -20,7 +20,8 @@ export default {
         proyectos: require("./proyectos.command"),
         rh: require("./rh.command"),
         admin: require("./admin.command"),
+        sheets: require("./sheets.command"),
         pause: require("./pause.command"),
-    stop: require("./stop.command"),
-    start: require("./start.command")
+        stop: require("./stop.command"),
+        start: require("./start.command")
 }

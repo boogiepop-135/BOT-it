@@ -89,6 +89,16 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
             // Convertir a objeto plano para respuesta JSON
             const savedObj = saved.toObject ? saved.toObject() : saved;
             logger.info('Sending response with saved project:', JSON.stringify(savedObj, null, 2));
+            
+            // Sincronizar automáticamente con Google Sheets si está habilitado
+            try {
+                const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
+                await autoSyncIfEnabled();
+            } catch (syncError: any) {
+                // No fallar la request si la sincronización falla (es opcional)
+                logger.warn('Auto-sync failed after project creation (optional):', syncError.message);
+            }
+            
             res.status(201).json(savedObj);
             logger.info('✅ Response sent successfully');
         } catch (saveError: any) {
@@ -120,6 +130,16 @@ router.put('/projects/:projectId', authenticate, authorizePermission('projects',
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
+        
+        // Sincronizar automáticamente con Google Sheets si está habilitado
+        try {
+            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
+            await autoSyncIfEnabled();
+        } catch (syncError: any) {
+            // No fallar la request si la sincronización falla (es opcional)
+            logger.warn('Auto-sync failed after project update (optional):', syncError.message);
+        }
+        
         res.json(project);
     } catch (e:any) {
         logger.error('Update project failed', e);
@@ -160,6 +180,16 @@ router.post('/projects/:projectId/tasks', authenticate, authorizePermission('tas
     try {
         const t = new TaskModel({ ...req.body, projectId: req.params.projectId });
         await t.save();
+        
+        // Sincronizar automáticamente con Google Sheets si está habilitado
+        try {
+            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
+            await autoSyncIfEnabled();
+        } catch (syncError: any) {
+            // No fallar la request si la sincronización falla (es opcional)
+            logger.warn('Auto-sync failed after task creation (optional):', syncError.message);
+        }
+        
         res.status(201).json(t);
     } catch (e:any) {
         logger.error('Create task failed', e);
@@ -177,6 +207,16 @@ router.put('/projects/:projectId/tasks/:taskId', authenticate, authorizePermissi
         if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
+        
+        // Sincronizar automáticamente con Google Sheets si está habilitado
+        try {
+            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
+            await autoSyncIfEnabled();
+        } catch (syncError: any) {
+            // No fallar la request si la sincronización falla (es opcional)
+            logger.warn('Auto-sync failed after task update (optional):', syncError.message);
+        }
+        
         res.json(task);
     } catch (e:any) {
         logger.error('Update task failed', e);

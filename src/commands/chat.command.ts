@@ -89,35 +89,66 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         return;
     }
     
-    // Detectar si el usuario es Levi (Super Admin) para comandos administrativos
-    try {
-        const contact = await message.getContact();
-        const { ContactModel } = await import('../crm/models/contact.model');
-        const contactDoc = await ContactModel.findOne({ phoneNumber: contact.number });
-        const isLevi = contactDoc?.role === 'levi' || contactDoc?.role === 'super_admin';
-        
-        if (isLevi) {
-            const adminKeywords = [
-                'enviar mensaje', 'mandar mensaje', 'mensaje a',
-                'redireccionar', 'redirigir', 'reenviar',
-                'pausar usuario', 'reanudar usuario', 'activar usuario',
-                'usuarios', 'lista usuarios', 'ver usuarios',
-                'estadisticas', 'estadísticas', 'stats',
-                'admin', 'administración'
-            ];
-            
-            const esAdminRequest = adminKeywords.some(keyword => cleanQuery.includes(keyword));
-            
-            if (esAdminRequest || cleanQuery.startsWith('!admin')) {
-                logger.info(`Admin command intent detected: ${cleanQuery}`);
-                const { run: runAdmin } = await import('./admin.command');
-                await runAdmin(message, args, userI18n);
-                return;
-            }
-        }
-    } catch (error) {
-        // Ignorar errores de detección
+    // Detectar comandos de Google Sheets
+    const sheetsKeywords = [
+        'actualizar celda', 'llenar celda', 'update cell', 'llenar hoja',
+        'actualizar fila', 'buscar y actualizar', 'find and update',
+        'agregar fila', 'nueva fila', 'append row', 'add row',
+        'leer hoja', 'leer datos', 'read sheet', 'ver hoja',
+        'sincronizar proyectos', 'sync proyectos', 'sincronizar', 'sync',
+        'google sheets', 'sheets', 'excel online'
+    ];
+    
+    const esSheetsRequest = sheetsKeywords.some(keyword => cleanQuery.includes(keyword));
+    
+    if (esSheetsRequest || cleanQuery.startsWith('!sheets')) {
+        logger.info(`Sheets command intent detected: ${cleanQuery}`);
+        const { run: runSheets } = await import('./sheets.command');
+        await runSheets(message, args, userI18n);
+        return;
     }
+
+        // Detectar si el usuario es Levi (Super Admin) para comandos administrativos
+        try {
+            const contact = await message.getContact();
+            const { ContactModel } = await import('../crm/models/contact.model');
+            const contactDoc = await ContactModel.findOne({ phoneNumber: contact.number });
+            const isLevi = contactDoc?.role === 'levi' || contactDoc?.role === 'super_admin';
+            
+            if (isLevi) {
+                const adminKeywords = [
+                    'enviar mensaje', 'mandar mensaje', 'mensaje a',
+                    'redireccionar', 'redirigir', 'reenviar',
+                    'pausar usuario', 'reanudar usuario', 'activar usuario',
+                    'usuarios', 'lista usuarios', 'ver usuarios',
+                    'estadisticas', 'estadísticas', 'stats',
+                    'admin', 'administración'
+                ];
+                
+                const esAdminRequest = adminKeywords.some(keyword => cleanQuery.includes(keyword));
+                
+                if (esAdminRequest || cleanQuery.startsWith('!admin')) {
+                    logger.info(`Admin command intent detected: ${cleanQuery}`);
+                    const { run: runAdmin } = await import('./admin.command');
+                    await runAdmin(message, args, userI18n);
+                    return;
+                }
+            }
+        } catch (error) {
+            // Ignorar errores de detección
+        }
+        
+        // Detectar comandos de Google Sheets
+        if (cleanQuery.includes('llenar hoja') || cleanQuery.includes('actualizar hoja') ||
+            cleanQuery.includes('leer hoja') || cleanQuery.includes('ver hoja') ||
+            cleanQuery.includes('sincronizar proyecto') || cleanQuery.includes('sync proyecto') ||
+            cleanQuery.includes('sincronizar todo') || cleanQuery.includes('sync todo') ||
+            cleanQuery.match(/llenar.*excel|actualizar.*excel|leer.*excel|ver.*excel/i)) {
+            logger.info(`Google Sheets command intent detected: ${cleanQuery}`);
+            const { run: runSheets } = await import('./sheets.command');
+            await runSheets(message, args, userI18n);
+            return;
+        }
     
     // Detectar si el usuario es RH (Karina/Nubia) para solicitudes de usuarios
     try {
