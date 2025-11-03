@@ -138,39 +138,73 @@ export default function sheetsApi() {
             const sheetName = mapping.sheetName;
             const spreadsheetId = integ.spreadsheetId;
 
+            logger.info(`Sync: ${collection} -> ${sheetName} en ${spreadsheetId}`);
+
             const db = mongoose.connection.db;
             if (!db) return res.status(500).json({ error: 'DB no disponible' });
+            
             const docs = await db.collection(collection).find({}).limit(5000).toArray();
-            const headers = mapping.fieldMap ? Object.values(mapping.fieldMap) : Object.keys(docs[0] || {}).filter(k => k !== '_id');
-            const rows: any[][] = [];
-            rows.push(headers);
-            for (const doc of docs) {
-                if (mapping.fieldMap) {
-                    rows.push(Object.keys(mapping.fieldMap).map(src => String((doc as any)[src] ?? '')));
-                } else {
-                    rows.push(headers.map(h => String((doc as any)[h] ?? '')));
-                }
+            logger.info(`Sync: Encontrados ${docs.length} documentos en ${collection}`);
+            
+            if (docs.length === 0) {
+                return res.json({ success: true, message: `Colección ${collection} está vacía`, synced: 0 });
             }
 
-            await ensureSheetExists(spreadsheetId, sheetName);
-            // Detectar si la hoja ya tiene contenido
-            const existing = await readRange(spreadsheetId, `${sheetName}!A:ZZZ`);
-            const hasContent = Array.isArray(existing) && existing.length > 0 && existing.some(r => Array.isArray(r) && r.some(v => String(v||'').trim() !== ''));
-            let ok = false;
-            if (!hasContent) {
-                // Hoja vacía: escribir headers + datos desde A1
-                ok = await writeRange(spreadsheetId, `${sheetName}!A1`, rows);
+            // Generar headers: si hay fieldMap, usar valores; si no, usar keys del primer doc
+            let headers: string[] = [];
+            if (mapping.fieldMap && Object.keys(mapping.fieldMap).length > 0) {
+                headers = Object.values(mapping.fieldMap);
             } else {
-                // Hoja con contenido: si la primera fila ya parece header, solo anexar datos
-                const dataRows = rows.slice(1);
-                const lastRow = existing.length;
-                ok = dataRows.length === 0 ? true : await writeRange(spreadsheetId, `${sheetName}!A${lastRow+1}`, dataRows);
+                // Obtener todas las keys únicas de todos los documentos
+                const allKeys = new Set<string>();
+                docs.forEach(doc => {
+                    Object.keys(doc).forEach(k => {
+                        if (k !== '_id') allKeys.add(k);
+                    });
+                });
+                headers = Array.from(allKeys).sort();
             }
-            if (!ok) return res.status(500).json({ error: 'Falló escritura en Sheets' });
-            res.json({ success: true, message: `Sincronizados ${docs.length} registros de ${collection} a ${sheetName}` });
-        } catch (error) {
+
+            logger.info(`Sync: Headers generados (${headers.length}): ${headers.join(', ')}`);
+
+            const rows: any[][] = [headers]; // Primera fila: headers
+            for (const doc of docs) {
+                const row: any[] = [];
+                if (mapping.fieldMap && Object.keys(mapping.fieldMap).length > 0) {
+                    // Usar fieldMap para mapear campos
+                    Object.keys(mapping.fieldMap).forEach(src => {
+                        const val = (doc as any)[src];
+                        row.push(val != null ? String(val) : '');
+                    });
+                } else {
+                    // Usar headers en el mismo orden
+                    headers.forEach(h => {
+                        const val = (doc as any)[h];
+                        row.push(val != null ? String(val) : '');
+                    });
+                }
+                rows.push(row);
+            }
+
+            logger.info(`Sync: ${rows.length} filas preparadas (${rows.length - 1} datos + 1 header)`);
+
+            await ensureSheetExists(spreadsheetId, sheetName);
+            
+            // Siempre sobrescribir desde A1 si no hay fieldMap o si queremos reemplazar todo
+            // Por ahora: siempre escribir desde A1 para reemplazar completamente
+            const ok = await writeRange(spreadsheetId, `${sheetName}!A1`, rows);
+            
+            if (!ok) {
+                logger.error(`Sync: Falló writeRange para ${sheetName}!A1`);
+                return res.status(500).json({ error: 'Falló escritura en Sheets' });
+            }
+            
+            logger.info(`Sync: ✅ Éxito - ${docs.length} registros sincronizados a ${sheetName}`);
+            res.json({ success: true, message: `Sincronizados ${docs.length} registros de ${collection} a ${sheetName}`, synced: docs.length });
+        } catch (error: any) {
             logger.error('Error sincronizando colección a hoja:', error);
-            res.status(500).json({ error: 'Error al sincronizar' });
+            logger.error('Stack:', error.stack);
+            res.status(500).json({ error: error.message || 'Error al sincronizar' });
         }
     });
 

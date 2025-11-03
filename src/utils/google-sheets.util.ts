@@ -154,27 +154,45 @@ export async function writeRange(
     // Expand range to cover all rows/cols when se pasa solo celda inicial (ej: Hoja 1!A1)
     let expandedRange = range;
     try {
-      const m = range.match(/^(.*)!([A-Z]+)(\d+)$/);
-      if (m) {
+      const m = range.match(/^(.*?)!([A-Z]+)(\d+)$/);
+      if (m && values.length > 0) {
         const sheet = m[1];
         const startColLetters = m[2];
         const startRow = parseInt(m[3], 10);
         const numRows = values.length;
-        const numCols = Math.max(0, ...values.map(r => r.length));
-        // Convert column letters to index
-        const colToIndex = (s: string) => s.split('').reduce((acc, ch) => acc * 26 + (ch.charCodeAt(0) - 64), 0);
-        const indexToCol = (n: number) => {
+        const numCols = Math.max(1, ...values.map(r => Math.max(1, r.length)));
+        
+        // Convert column letters to 0-based index (A=0, B=1, ..., Z=25, AA=26, etc.)
+        const colToIndex = (s: string): number => {
+          let idx = 0;
+          for (let i = 0; i < s.length; i++) {
+            idx = idx * 26 + (s.charCodeAt(i) - 64);
+          }
+          return idx - 1; // 0-based
+        };
+        
+        // Convert 0-based index to column letters (0=A, 1=B, ..., 25=Z, 26=AA, etc.)
+        const indexToCol = (n: number): string => {
           let res = '';
-          while (n > 0) { const rem = (n - 1) % 26; res = String.fromCharCode(65 + rem) + res; n = Math.floor((n - 1) / 26); }
+          n = n + 1; // Convert to 1-based for calculation
+          while (n > 0) {
+            const rem = (n - 1) % 26;
+            res = String.fromCharCode(65 + rem) + res;
+            n = Math.floor((n - 1) / 26);
+          }
           return res;
         };
+        
         const startColIndex = colToIndex(startColLetters);
-        const endColIndex = startColIndex + Math.max(0, numCols - 1);
+        const endColIndex = startColIndex + numCols - 1;
         const endColLetters = indexToCol(endColIndex);
-        const endRow = startRow + Math.max(0, numRows - 1);
+        const endRow = startRow + numRows - 1;
         expandedRange = `${sheet}!${startColLetters}${startRow}:${endColLetters}${endRow}`;
+        logger.info(`Rango expandido: ${range} -> ${expandedRange} (${numRows} filas x ${numCols} cols)`);
       }
-    } catch { /* noop */ }
+    } catch (e: any) {
+      logger.warn(`No se pudo expandir rango ${range}:`, e.message);
+    }
 
     await sheetsClient.spreadsheets.values.update({
       spreadsheetId,
