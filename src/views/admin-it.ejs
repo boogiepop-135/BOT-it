@@ -377,120 +377,144 @@
       if (projectSelect) projectSelect.innerHTML = '<option>No hay proyectos</option>';
     });
 
-    projectForm?.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      e.stopPropagation(); // Evitar propagación adicional
+    // Función para inicializar el event listener del formulario
+    function initProjectForm() {
+      const form = document.getElementById('projectForm');
+      if (!form) {
+        console.error('projectForm no encontrado en el DOM');
+        return;
+      }
       
-      const projMsg = document.getElementById('projMsg');
-      if (projMsg) projMsg.textContent = '';
+      console.log('projectForm encontrado, registrando event listener');
       
-      const submitBtn = projectForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn?.innerHTML;
-      
-      try{
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando...';
-        }
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        e.stopPropagation(); // Evitar propagación adicional
+        e.stopImmediatePropagation(); // Evitar otros listeners
         
-        const projNameInput = document.getElementById('projName');
-        const projStartInput = document.getElementById('projStart');
-        const projEndInput = document.getElementById('projEnd');
+        console.log('Form submit event capturado');
         
-        if (!projNameInput) throw new Error('Campo nombre no encontrado');
+        const projMsg = document.getElementById('projMsg');
+        if (projMsg) projMsg.textContent = '';
         
-        const name = projNameInput.value.trim();
-        if (!name) {
-          throw new Error('El nombre del proyecto es requerido');
-        }
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn?.innerHTML;
         
-        const startDateValue = projStartInput?.value || '';
-        const endDateValue = projEndInput?.value || '';
-        
-        // Construir body solo con campos que tienen valor (MongoDB no acepta undefined bien)
-        const body = {
-          name: name,
-          progress: 0,
-          priority: 'medium'
-        };
-        
-        // Solo agregar fechas si tienen valor
-        if (startDateValue) {
-          body.startDate = new Date(startDateValue).toISOString();
-        }
-        if (endDateValue) {
-          body.endDate = new Date(endDateValue).toISOString();
-        }
-        
-        console.log('Creando proyecto con body:', body);
-        console.log('Token disponible:', token ? 'Sí' : 'No');
-        console.log('URL:', '/crm/projects');
-        
-        const response = await fetch('/crm/projects', { 
-          method:'POST', 
-          headers:{
-            'Content-Type':'application/json',
-            'Authorization': `Bearer ${token}`
-          }, 
-          body: JSON.stringify(body) 
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Error response text:', errorText);
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText || 'Error desconocido' };
+        try{
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando...';
           }
-          console.error('Error data:', errorData);
-          throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('Proyecto creado exitosamente:', result);
-        
-        // Limpiar formulario
-        projectForm.reset();
-        if (projMsg) {
-          projMsg.textContent = '✅ Proyecto creado exitosamente';
-          projMsg.className = 'text-sm text-green-600 h-5 mt-2';
-        }
-        
-        // Recargar lista de proyectos
-        await loadProjectsForGantt();
-        
-        // Seleccionar el proyecto recién creado
-        if (projectSelect && result._id) {
-          projectSelect.value = result._id;
-          await renderGantt(result._id);
-        }
-        
-        setTimeout(() => {
+          
+          const projNameInput = document.getElementById('projName');
+          const projStartInput = document.getElementById('projStart');
+          const projEndInput = document.getElementById('projEnd');
+          
+          if (!projNameInput) throw new Error('Campo nombre no encontrado');
+          
+          const name = projNameInput.value.trim();
+          if (!name) {
+            throw new Error('El nombre del proyecto es requerido');
+          }
+          
+          const startDateValue = projStartInput?.value || '';
+          const endDateValue = projEndInput?.value || '';
+          
+          // Construir body solo con campos que tienen valor (MongoDB no acepta undefined bien)
+          const body = {
+            name: name,
+            progress: 0,
+            priority: 'medium'
+          };
+          
+          // Solo agregar fechas si tienen valor
+          if (startDateValue) {
+            body.startDate = new Date(startDateValue).toISOString();
+          }
+          if (endDateValue) {
+            body.endDate = new Date(endDateValue).toISOString();
+          }
+          
+          console.log('Creando proyecto con body:', body);
+          console.log('Token disponible:', token ? 'Sí' : 'No');
+          console.log('URL:', '/crm/projects');
+          
+          const response = await fetch('/crm/projects', { 
+            method:'POST', 
+            headers:{
+              'Content-Type':'application/json',
+              'Authorization': `Bearer ${token}`
+            }, 
+            body: JSON.stringify(body) 
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response ok:', response.ok);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response text:', errorText);
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: errorText || 'Error desconocido' };
+            }
+            console.error('Error data:', errorData);
+            throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          console.log('Proyecto creado exitosamente:', result);
+          
+          // Limpiar formulario
+          form.reset();
           if (projMsg) {
-            projMsg.textContent = '';
+            projMsg.textContent = '✅ Proyecto creado exitosamente';
+            projMsg.className = 'text-sm text-green-600 h-5 mt-2';
+          }
+          
+          // Recargar lista de proyectos
+          await loadProjectsForGantt();
+          
+          // Seleccionar el proyecto recién creado
+          if (projectSelect && result._id) {
+            projectSelect.value = result._id;
+            await renderGantt(result._id);
+          }
+          
+          setTimeout(() => {
+            if (projMsg) {
+              projMsg.textContent = '';
+              projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+            }
+          }, 3000);
+        } catch(err) { 
+          console.error('Error creating project:', err);
+          const errorMsg = err.message || 'Error desconocido';
+          if (projMsg) {
+            projMsg.textContent = '❌ Error al crear proyecto: ' + errorMsg; 
             projMsg.className = 'text-sm text-red-600 h-5 mt-2';
           }
-        }, 3000);
-      } catch(err) { 
-        console.error('Error creating project:', err);
-        const errorMsg = err.message || 'Error desconocido';
-        if (projMsg) {
-          projMsg.textContent = '❌ Error al crear proyecto: ' + errorMsg; 
-          projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+          alert('Error al crear proyecto: ' + errorMsg);
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            if (originalText) submitBtn.innerHTML = originalText;
+          }
         }
-        alert('Error al crear proyecto: ' + errorMsg);
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          if (originalText) submitBtn.innerHTML = originalText;
-        }
-      }
-    });
+      });
+      
+      console.log('Event listener registrado exitosamente');
+    }
+    
+    // Inicializar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProjectForm);
+    } else {
+      // DOM ya está listo
+      initProjectForm();
+    }
 
     // Función para marcar/desmarcar tarea como completada
     window.toggleTaskComplete = async function(taskId, isComplete) {
