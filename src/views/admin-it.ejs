@@ -121,6 +121,10 @@
           if (projects.length > 0 && selector.value && selector.value !== '') {
             await renderGantt(selector.value);
           }
+          // Deshabilitar botones si no hay selección
+          const delBtn = document.getElementById('deleteProjectBtn');
+          const completeBtn = document.getElementById('completeProjectBtn');
+          if (!selector.value) { delBtn?.classList.add('hidden'); completeBtn?.classList.add('hidden'); }
         } else {
           console.error('projectSelect no encontrado en el DOM');
         }
@@ -202,6 +206,11 @@
         if (tasksSection) {
           tasksSection.classList.remove('hidden');
         }
+        // Habilitar acciones de proyecto
+        const delBtn = document.getElementById('deleteProjectBtn');
+        const completeBtn = document.getElementById('completeProjectBtn');
+        delBtn && delBtn.classList.remove('hidden');
+        completeBtn && completeBtn.classList.remove('hidden');
       
       await loadTasksList(projectId);
       updateDependenciesSelectors();
@@ -388,6 +397,39 @@
     }
     
     reloadBtn?.addEventListener('click', () => renderGantt(projectSelect?.value || ''));
+  // Eliminar proyecto seleccionado
+  document.getElementById('deleteProjectBtn')?.addEventListener('click', async () => {
+    const sel = document.getElementById('projectSelect');
+    const projectId = sel && (sel as any).value;
+    if (!projectId) return;
+    if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+    try {
+      await fetch(`/crm/projects/${projectId}`, { method: 'DELETE' });
+      // Recargar selector y limpiar vista
+      await window.loadProjectsForGantt();
+      const el = document.getElementById('gantt');
+      const placeholder = document.getElementById('ganttPlaceholder');
+      if (el) el.innerHTML = '';
+      if (placeholder) placeholder.classList.remove('hidden');
+      document.getElementById('tasksSection')?.classList.add('hidden');
+    } catch (e) {
+      alert('Error eliminando proyecto');
+    }
+  });
+  // Completar proyecto y notificar
+  document.getElementById('completeProjectBtn')?.addEventListener('click', async () => {
+    const sel = document.getElementById('projectSelect');
+    const projectId = sel && (sel as any).value;
+    if (!projectId) return;
+    if (!confirm('¿Marcar el proyecto como completado y notificar a dirección?')) return;
+    try {
+      await fetch(`/crm/projects/${projectId}/complete`, { method: 'POST' });
+      await renderGantt(projectId);
+      alert('Proyecto completado y notificado.');
+    } catch (e) {
+      alert('Error completando el proyecto');
+    }
+  });
     viewMode?.addEventListener('change', () => gantt?.change_view_mode(viewMode.value));
     
     // Event listener para eliminar proyecto
@@ -1629,6 +1671,10 @@
           </select>
             <button id="reloadBtn" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm transition-colors">
               <i class="fas fa-sync-alt mr-2"></i>Recargar
+            </button>
+            <button id="completeProjectBtn" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap" title="Marcar como completado y notificar">
+              <i class="fas fa-check"></i>
+              <span>Completar y Notificar</span>
             </button>
         </div>
       </div>

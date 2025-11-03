@@ -4,6 +4,7 @@ import { BotManager } from '../../bot.manager';
 import logger from '../../configs/logger.config';
 import { authenticate, authorizeAdmin } from '../middlewares/auth.middleware';
 import { CampaignModel } from '../models/campaign.model';
+import { ProjectModel } from '../models/project.model';
 import { ContactModel } from '../models/contact.model';
 import { PaymentReminderModel } from '../models/payment-reminder.model';
 import { AuthService } from '../utils/auth.util';
@@ -536,6 +537,39 @@ export default function (botManager: BotManager) {
 
   // Sub-routers CRM
   router.use('/', projectsApi);
+  // Completar proyecto y notificar
+  router.post('/projects/:projectId/complete', authenticate, authorizeAdmin, async (req, res) => {
+        try {
+            const { projectId } = req.params;
+            const project = await ProjectModel.findByIdAndUpdate(
+                projectId,
+                { $set: { status: 'done', progress: 100, endDate: new Date() } },
+                { new: true }
+            );
+            if (!project) return res.status(404).json({ error: 'Project not found' });
+
+            // Notificar a stakeholders clave
+            try {
+                const rolesToNotify = ['salma', 'francisco', 'desarrollo_estrategia_inrra'];
+                const keyContacts = await ContactModel.find({ role: { $in: rolesToNotify } }).lean();
+                const uniquePhones = Array.from(new Set(keyContacts.map((c:any)=>c.phoneNumber).filter(Boolean)));
+                const message = `✅ Proyecto finalizado\n\n`+
+                    `📌 Nombre: ${project.name}\n`+
+                    `📊 Estado: Completado (100%)\n`+
+                    `📅 Fecha fin: ${new Date(project.endDate||Date.now()).toLocaleString('es-MX')}`;
+                for (const phone of uniquePhones) {
+                    await botManager.sendMessageToUser(phone, message);
+                }
+            } catch (notifyErr) {
+                logger.warn('Fallo al notificar fin de proyecto:', notifyErr);
+            }
+
+            res.json({ success: true, project });
+        } catch (error) {
+            logger.error('Failed to complete project:', error);
+            res.status(500).json({ error: 'Failed to complete project' });
+        }
+  });
   router.use('/sheets', sheetsApi());
   router.use('/rh', rhApi);
   router.use('/finance', financeApi);
