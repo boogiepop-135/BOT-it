@@ -91,19 +91,43 @@
         const projects = await fetchJSON('/crm/projects', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (projectSelect) {
-      projectSelect.innerHTML = '';
-      projects.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p._id; opt.textContent = p.name;
-        projectSelect.appendChild(opt);
-      });
-      if (projects.length) await renderGantt(projects[0]._id);
+        
+        // Re-obtener el selector por si no estaba disponible antes
+        const selector = document.getElementById('projectSelect') || projectSelect;
+        if (selector) {
+          console.log(`Cargando ${projects.length} proyectos en el selector`);
+          
+          // Guardar el valor actual si existe
+          const currentValue = selector.value;
+          
+          // Limpiar y repoblar
+          selector.innerHTML = '<option value="">-- Selecciona un proyecto --</option>';
+          projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p._id;
+            opt.textContent = p.name || 'Sin nombre';
+            selector.appendChild(opt);
+          });
+          
+          // Restaurar el valor anterior si aún existe, o seleccionar el primero
+          if (currentValue && Array.from(selector.options).some(opt => opt.value === currentValue)) {
+            selector.value = currentValue;
+          } else if (projects.length > 0) {
+            selector.value = projects[0]._id;
+          }
+          
+          // Si hay proyectos y no hay un proyecto seleccionado, seleccionar el primero
+          if (projects.length > 0 && selector.value && selector.value !== '') {
+            await renderGantt(selector.value);
+          }
+        } else {
+          console.error('projectSelect no encontrado en el DOM');
         }
       } catch (error) {
         console.error('Error loading projects:', error);
-        if (projectSelect) {
-          projectSelect.innerHTML = '<option>Error al cargar proyectos</option>';
+        const selector = document.getElementById('projectSelect') || projectSelect;
+        if (selector) {
+          selector.innerHTML = '<option value="">Error al cargar proyectos</option>';
         }
       }
     }
@@ -487,12 +511,41 @@
           
           // Seleccionar el proyecto recién creado
           const projectId = result._id || result.id;
-          if (projectSelect && projectId) {
-            projectSelect.value = projectId;
-            console.log('Seleccionando proyecto:', projectId);
-            await renderGantt(projectId);
+          console.log('Intentando seleccionar proyecto:', projectId);
+          
+          // Esperar a que el selector esté actualizado
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Re-obtener el selector por si cambió
+          const updatedProjectSelect = document.getElementById('projectSelect');
+          if (updatedProjectSelect && projectId) {
+            // Verificar que el proyecto esté en las opciones
+            const optionExists = Array.from(updatedProjectSelect.options).some(opt => opt.value === projectId);
+            if (optionExists) {
+              updatedProjectSelect.value = projectId;
+              console.log('✅ Proyecto seleccionado en el selector:', projectId);
+              
+              // Disparar evento change para que se actualice el Gantt
+              updatedProjectSelect.dispatchEvent(new Event('change'));
+              
+              // También renderizar directamente por si acaso
+              await renderGantt(projectId);
+            } else {
+              console.warn('⚠️ El proyecto no está en las opciones del selector. Opciones disponibles:', 
+                Array.from(updatedProjectSelect.options).map(opt => ({value: opt.value, text: opt.textContent})));
+              // Intentar agregar la opción manualmente
+              const newOption = document.createElement('option');
+              newOption.value = projectId;
+              newOption.textContent = result.name || 'Nuevo Proyecto';
+              updatedProjectSelect.appendChild(newOption);
+              updatedProjectSelect.value = projectId;
+              updatedProjectSelect.dispatchEvent(new Event('change'));
+              await renderGantt(projectId);
+            }
           } else {
-            console.warn('No se pudo seleccionar el proyecto en el selector');
+            console.error('❌ projectSelect no encontrado o projectId inválido');
+            console.error('   - updatedProjectSelect:', updatedProjectSelect);
+            console.error('   - projectId:', projectId);
           }
           
           setTimeout(() => {
