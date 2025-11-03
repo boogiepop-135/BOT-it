@@ -50,22 +50,22 @@
     // Guard: requerir token para acceder al panel
     // Declarar token en scope global para usar en todos los scripts
     var token = localStorage.getItem('authToken');
-    if (!token) {
-      window.location.replace('/admin/login');
-    }
-    // Interceptor fetch para adjuntar Authorization por defecto y normalizar URLs
-    const _fetch = window.fetch;
-    window.fetch = (input, init = {}) => {
-      init.headers = init.headers || {};
-      if (!String(input).includes('/crm/auth/login')) {
-        init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
+      if (!token) {
+        window.location.replace('/admin/login');
       }
-      // Normalizar URL si es relativa
-      const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
-        ? apiUrl(input) 
-        : input;
-      return _fetch(url, init);
-    };
+      // Interceptor fetch para adjuntar Authorization por defecto y normalizar URLs
+      const _fetch = window.fetch;
+      window.fetch = (input, init = {}) => {
+        init.headers = init.headers || {};
+        if (!String(input).includes('/crm/auth/login')) {
+          init.headers['Authorization'] = 'Bearer ' + localStorage.getItem('authToken');
+        }
+        // Normalizar URL si es relativa
+        const url = typeof input === 'string' && (input.startsWith('/') || !input.startsWith('http')) 
+          ? apiUrl(input) 
+          : input;
+        return _fetch(url, init);
+      };
   </script>
   <script>
     // --- Gantt Logic ---
@@ -92,13 +92,13 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (projectSelect) {
-          projectSelect.innerHTML = '';
-          projects.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p._id; opt.textContent = p.name;
-            projectSelect.appendChild(opt);
-          });
-          if (projects.length) await renderGantt(projects[0]._id);
+      projectSelect.innerHTML = '';
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p._id; opt.textContent = p.name;
+        projectSelect.appendChild(opt);
+      });
+      if (projects.length) await renderGantt(projects[0]._id);
         }
       } catch (error) {
         console.error('Error loading projects:', error);
@@ -133,7 +133,7 @@
         const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        currentTasks = tasks;
+      currentTasks = tasks;
         
         const el = document.getElementById('gantt');
         const placeholder = document.getElementById('ganttPlaceholder');
@@ -146,30 +146,30 @@
           }
         } else {
           if (placeholder) placeholder.classList.add('hidden');
-          const data = tasks.map(t => ({
-            id: t._id,
-            name: t.name,
-            start: toDateOnly(t.startDate || Date.now()),
-            end: toDateOnly(t.endDate || Date.now()),
-            progress: Number(t.progress || 0),
-            dependencies: (t.dependencies||[]).join(',')
-          }));
-          el.innerHTML='';
-          const mode = viewMode?.value || 'Day';
-          gantt = new Gantt(el, data, { view_mode: mode, language: 'es' });
-          
-          // Evento click en barras del Gantt para editar (después de un delay para que Frappe-Gantt renderice)
-          setTimeout(() => {
-            el.addEventListener('click', (e) => {
-              const bar = e.target.closest('.bar-wrapper, .bar-label');
-              if (bar) {
-                const taskId = bar.getAttribute('data-id') || e.target.closest('[data-id]')?.getAttribute('data-id');
-                if (taskId && window.openTaskEditModal) {
-                  window.openTaskEditModal(taskId);
-                }
-              }
-            });
-          }, 100);
+      const data = tasks.map(t => ({
+        id: t._id,
+        name: t.name,
+        start: toDateOnly(t.startDate || Date.now()),
+        end: toDateOnly(t.endDate || Date.now()),
+        progress: Number(t.progress || 0),
+        dependencies: (t.dependencies||[]).join(',')
+      }));
+      el.innerHTML='';
+      const mode = viewMode?.value || 'Day';
+      gantt = new Gantt(el, data, { view_mode: mode, language: 'es' });
+      
+      // Evento click en barras del Gantt para editar (después de un delay para que Frappe-Gantt renderice)
+      setTimeout(() => {
+        el.addEventListener('click', (e) => {
+          const bar = e.target.closest('.bar-wrapper, .bar-label');
+          if (bar) {
+            const taskId = bar.getAttribute('data-id') || e.target.closest('[data-id]')?.getAttribute('data-id');
+            if (taskId && window.openTaskEditModal) {
+              window.openTaskEditModal(taskId);
+            }
+          }
+        });
+      }, 100);
         }
         
         // Mostrar sección de tareas cuando hay un proyecto seleccionado
@@ -177,9 +177,9 @@
         if (tasksSection) {
           tasksSection.classList.remove('hidden');
         }
-        
-        await loadTasksList(projectId);
-        updateDependenciesSelectors();
+      
+      await loadTasksList(projectId);
+      updateDependenciesSelectors();
       } catch (error) {
         console.error('Error rendering Gantt:', error);
         const el = document.getElementById('gantt');
@@ -264,7 +264,7 @@
                        class="w-6 h-6 text-green-600 border-2 border-gray-400 rounded focus:ring-2 focus:ring-green-500 focus:ring-offset-2 cursor-pointer transition-all shadow-sm hover:border-green-500"
                        onchange="toggleTaskComplete('${taskId}', this.checked)"
                        title="${isDone ? 'Desmarcar como completada' : 'Marcar como completada'}">
-              </div>
+          </div>
               <div class="flex-1 min-w-0">
                 <h5 class="font-semibold text-gray-800 mb-1 ${isDone ? 'line-through text-gray-500' : ''}">
                   ${t.name}
@@ -298,8 +298,8 @@
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
-            </div>
-          `;
+          </div>
+        `;
           tasksContainer.appendChild(taskDiv);
         });
         
@@ -1100,17 +1100,17 @@
             <i class="fas fa-list mr-2 text-blue-600"></i>
             Paso 2: Proyectos Existentes
           </h2>
-          <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3">
             <select id="viewMode" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="Day">Vista: Día</option>
               <option value="Week">Vista: Semana</option>
               <option value="Month">Vista: Mes</option>
-            </select>
+          </select>
             <button id="reloadBtn" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm transition-colors">
               <i class="fas fa-sync-alt mr-2"></i>Recargar
             </button>
-          </div>
         </div>
+      </div>
         
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -1123,9 +1123,9 @@
 
         <!-- Gantt Chart -->
         <div id="ganttContainer" class="bg-gray-50 rounded-lg p-4 overflow-x-auto border border-gray-200">
-          <svg id="gantt"></svg>
+        <svg id="gantt"></svg>
           <p id="ganttPlaceholder" class="text-center text-gray-500 py-8">Selecciona un proyecto para ver el diagrama de Gantt</p>
-        </div>
+      </div>
       </div>
 
       <!-- PASO 3: Tareas del Proyecto Seleccionado -->
@@ -1140,7 +1140,7 @@
           <h3 class="text-lg font-semibold text-gray-700 mb-3">
             <i class="fas fa-plus-circle mr-2 text-green-600"></i>Agregar Nueva Tarea
           </h3>
-          <form id="taskForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <form id="taskForm" class="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div class="md:col-span-2">
               <label class="block text-xs font-medium text-gray-700 mb-1">Nombre de la tarea</label>
               <input id="taskName" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500" placeholder="Ej: Configurar servidor" required />
@@ -1156,17 +1156,17 @@
             <div>
               <label class="block text-xs font-medium text-gray-700 mb-1">Tareas dependientes</label>
               <select id="taskDependencies" multiple class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500" title="Mantén Ctrl/Cmd para seleccionar múltiples">
-                <option value="">Sin dependencias</option>
-              </select>
+            <option value="">Sin dependencias</option>
+          </select>
             </div>
             <div class="flex items-end">
               <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
                 <i class="fas fa-plus mr-2"></i>Crear Tarea
               </button>
             </div>
-          </form>
+        </form>
           <p id="taskMsg" class="text-sm mt-2 h-5"></p>
-        </div>
+      </div>
 
         <!-- Lista de Tareas con Casillas -->
         <div class="mt-4">
@@ -1175,8 +1175,8 @@
           </h3>
           <div id="tasksList" class="space-y-3">
             <p class="text-gray-500 text-sm text-center py-4">No hay tareas en este proyecto aún</p>
-          </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -2591,7 +2591,7 @@
     setTimeout(() => {
       const btn = document.getElementById('bot-control-btn');
       if (btn) {
-        checkBotStatus();
+    checkBotStatus();
       }
     }, 500);
     
@@ -2679,14 +2679,14 @@
     };
 
     window.changeUserRole = async function(phoneNumber, currentRole) {
-        const roleOptions = [
-          { value: 'user', label: 'Usuario' },
+      const roleOptions = [
+        { value: 'user', label: 'Usuario' },
           { value: 'salma', label: 'Salma' },
           { value: 'francisco', label: 'Francisco' },
           { value: 'rh_karina', label: 'RH Karina' },
           { value: 'rh_nubia', label: 'RH Nubia' },
           { value: 'desarrollo_estrategia_inrra', label: 'Desarrollo y Estrategia Inrra' },
-          { value: 'boss', label: 'Jefe' },
+        { value: 'boss', label: 'Jefe' },
           { value: 'ceo', label: 'CEO' },
           { value: 'admin', label: 'Administrador' },
           { value: 'levi', label: 'Levi Villarreal (Super Admin)' },
@@ -3012,8 +3012,7 @@
       });
     }
 
-    // Show dashboard by default
-    document.querySelector('[data-section="dashboard"]').click();
+    // Dashboard se muestra por defecto si no hay sección guardada (ya se maneja arriba)
 
     // Check WhatsApp status and update button
     async function checkWhatsAppStatus() {
