@@ -16,26 +16,56 @@ router.get('/projects', authenticate, authorizePermission('projects','read'), as
 
 router.post('/projects', authenticate, authorizePermission('projects','write'), async (req, res) => {
     try {
-        const body = { ...req.body };
+        const body: any = {};
+        
+        // Copiar campos requeridos
+        if (req.body.name) {
+            body.name = req.body.name.trim();
+        } else {
+            return res.status(400).json({ error: 'El nombre del proyecto es requerido' });
+        }
+        
+        // Copiar campos opcionales solo si existen
+        if (req.body.startDate) {
+            body.startDate = new Date(req.body.startDate);
+        }
+        if (req.body.endDate) {
+            body.endDate = new Date(req.body.endDate);
+        }
+        if (req.body.progress !== undefined) {
+            body.progress = Number(req.body.progress) || 0;
+        } else {
+            body.progress = 0;
+        }
+        if (req.body.priority) {
+            body.priority = req.body.priority;
+        } else {
+            body.priority = 'medium';
+        }
         
         // Si no hay fecha de inicio o fin, establecer status como 'planned' (por plantear)
         if (!body.startDate && !body.endDate) {
             body.status = 'planned';
-        } else if (!body.status) {
+        } else if (!req.body.status) {
             // Si hay fechas pero no se especificó status, verificar si ya pasó la fecha de inicio
             if (body.startDate && new Date(body.startDate) <= new Date()) {
                 body.status = 'in_progress';
             } else {
                 body.status = 'planned';
             }
+        } else {
+            body.status = req.body.status;
         }
         
+        logger.info('Creating project with body:', JSON.stringify(body));
+        
         const p = new ProjectModel(body);
-        await p.save();
-        res.status(201).json(p);
+        const saved = await p.save();
+        logger.info('Project created successfully:', saved._id);
+        res.status(201).json(saved);
     } catch (e:any) {
         logger.error('Create project failed', e);
-        res.status(400).json({ error: e.message });
+        res.status(400).json({ error: e.message || 'Error al crear proyecto' });
     }
 });
 

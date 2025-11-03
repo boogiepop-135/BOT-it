@@ -378,8 +378,12 @@
     });
 
     projectForm?.addEventListener('submit', async (e)=>{
-      e.preventDefault(); 
-      projMsg.textContent='';
+      e.preventDefault();
+      e.stopPropagation(); // Evitar propagación adicional
+      
+      const projMsg = document.getElementById('projMsg');
+      if (projMsg) projMsg.textContent = '';
+      
       const submitBtn = projectForm.querySelector('button[type="submit"]');
       const originalText = submitBtn?.innerHTML;
       
@@ -389,19 +393,36 @@
           submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando...';
         }
         
-        const startDateValue = document.getElementById('projStart').value;
-        const endDateValue = document.getElementById('projEnd').value;
+        const projNameInput = document.getElementById('projName');
+        const projStartInput = document.getElementById('projStart');
+        const projEndInput = document.getElementById('projEnd');
         
-        // Si no hay fechas, el backend establecerá status como 'planned'
+        if (!projNameInput) throw new Error('Campo nombre no encontrado');
+        
+        const name = projNameInput.value.trim();
+        if (!name) {
+          throw new Error('El nombre del proyecto es requerido');
+        }
+        
+        const startDateValue = projStartInput?.value || '';
+        const endDateValue = projEndInput?.value || '';
+        
+        // Construir body solo con campos que tienen valor (MongoDB no acepta undefined bien)
         const body = {
-          name: document.getElementById('projName').value.trim(),
-          startDate: startDateValue ? new Date(startDateValue).toISOString() : undefined,
-          endDate: endDateValue ? new Date(endDateValue).toISOString() : undefined,
+          name: name,
           progress: 0,
           priority: 'medium'
         };
         
-        if (!body.name) throw new Error('Nombre requerido');
+        // Solo agregar fechas si tienen valor
+        if (startDateValue) {
+          body.startDate = new Date(startDateValue).toISOString();
+        }
+        if (endDateValue) {
+          body.endDate = new Date(endDateValue).toISOString();
+        }
+        
+        console.log('Creando proyecto con body:', body);
         
         const response = await fetch('/crm/projects', { 
           method:'POST', 
@@ -413,30 +434,49 @@
         });
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || 'Error desconocido' };
+          }
           throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
+        console.log('Proyecto creado exitosamente:', result);
         
+        // Limpiar formulario
         projectForm.reset();
-        document.getElementById('projProgress').value = '0';
-        projMsg.textContent = '✅ Proyecto creado exitosamente';
-        projMsg.className = 'text-sm text-green-600 h-5 mt-2';
+        if (projMsg) {
+          projMsg.textContent = '✅ Proyecto creado exitosamente';
+          projMsg.className = 'text-sm text-green-600 h-5 mt-2';
+        }
         
+        // Recargar lista de proyectos
         await loadProjectsForGantt();
-        if (projectSelect?.value) {
-          await loadTasksList(projectSelect.value);
+        
+        // Seleccionar el proyecto recién creado
+        if (projectSelect && result._id) {
+          projectSelect.value = result._id;
+          await renderGantt(result._id);
         }
         
         setTimeout(() => {
-          projMsg.textContent = '';
-          projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+          if (projMsg) {
+            projMsg.textContent = '';
+            projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+          }
         }, 3000);
-      }catch(err){ 
+      } catch(err) { 
         console.error('Error creating project:', err);
-        projMsg.textContent = '❌ Error al crear proyecto: ' + (err.message||'Error desconocido'); 
-        projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+        const errorMsg = err.message || 'Error desconocido';
+        if (projMsg) {
+          projMsg.textContent = '❌ Error al crear proyecto: ' + errorMsg; 
+          projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+        }
+        alert('Error al crear proyecto: ' + errorMsg);
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -1545,12 +1585,21 @@
         showSection(section);
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         e.currentTarget.classList.add('active');
+        
+        // Guardar sección activa en localStorage
+        if (section) {
+          localStorage.setItem('activeSection', section);
+        }
       });
     });
 
     function showSection(section) {
       document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
-      document.getElementById(section + '-section').classList.remove('hidden');
+      const sectionElement = document.getElementById(section + '-section');
+      if (sectionElement) {
+        sectionElement.classList.remove('hidden');
+      }
+      
       if (section === 'dashboard') loadDashboard();
       if (section === 'tickets') loadTickets();
       if (section === 'rh-requests') loadRHRequests();
@@ -1565,6 +1614,25 @@
       }
       if (section === 'groups') loadGroups();
       if (section === 'reminders') loadReminders();
+    }
+    
+    // Restaurar sección activa al cargar la página
+    const savedSection = localStorage.getItem('activeSection');
+    if (savedSection) {
+      const savedNavItem = document.querySelector(`[data-section="${savedSection}"]`);
+      if (savedNavItem) {
+        // Activar navegación
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        savedNavItem.classList.add('active');
+        // Mostrar sección
+        showSection(savedSection);
+      } else {
+        // Si no se encuentra, mostrar dashboard por defecto
+        document.querySelector('[data-section="dashboard"]')?.click();
+      }
+    } else {
+      // Si no hay sección guardada, mostrar dashboard por defecto
+      document.querySelector('[data-section="dashboard"]')?.click();
     }
 
     // Load Dashboard
