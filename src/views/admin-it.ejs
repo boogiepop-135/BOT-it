@@ -833,36 +833,104 @@
       document.getElementById('taskEditForm').reset();
     };
 
-    window.deleteTaskFromModal = async function() {
-      const taskId = document.getElementById('editTaskId').value;
-      if (taskId && confirm('¿Estás seguro de eliminar esta tarea?')) {
-        try {
-          await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { 
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          closeTaskEditModal();
-          await renderGantt(projectSelect.value);
-          await loadTasksList(projectSelect.value);
-          await updateProjectProgress();
-        } catch(err) {
-          alert('Error al eliminar: ' + (err.message || ''));
-        }
-      }
-    };
-
+    // Función global mejorada para eliminar tareas
     window.deleteTask = async function(taskId) {
-      if (!taskId || !confirm('¿Estás seguro de eliminar esta tarea?')) return;
+      if (!taskId) {
+        alert('Error: ID de tarea no válido');
+        return;
+      }
+      
+      const taskElement = document.querySelector(`#task-${taskId}`);
+      const taskName = taskElement?.querySelector('h5')?.textContent?.trim() || 'esta tarea';
+      
+      if (!confirm(`¿Estás seguro de eliminar la tarea "${taskName}"?\n\n⚠️ Esta acción no se puede deshacer.`)) {
+        return;
+      }
+      
       try {
-        await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { 
+        const currentProjectId = projectSelect?.value;
+        if (!currentProjectId) {
+          alert('Error: No hay proyecto seleccionado');
+          return;
+        }
+        
+        const response = await fetch(`/crm/projects/${currentProjectId}/tasks/${taskId}`, { 
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        await renderGantt(projectSelect.value);
-        await loadTasksList(projectSelect.value);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || 'Error desconocido' };
+          }
+          throw new Error(errorData.error || `Error ${response.status}`);
+        }
+        
+        console.log('Tarea eliminada exitosamente');
+        alert('✅ Tarea eliminada exitosamente');
+        
+        // Recargar Gantt y lista de tareas
+        await renderGantt(currentProjectId);
+        await loadTasksList(currentProjectId);
         await updateProjectProgress();
       } catch(err) {
-        alert('Error al eliminar: ' + (err.message || ''));
+        console.error('Error eliminando tarea:', err);
+        alert('❌ Error al eliminar tarea: ' + (err.message || 'Error desconocido'));
+      }
+    };
+
+    window.deleteTaskFromModal = async function() {
+      const taskId = document.getElementById('editTaskId')?.value;
+      if (!taskId) {
+        alert('Error: No hay tarea seleccionada');
+        return;
+      }
+      
+      const taskName = document.getElementById('editTaskName')?.value || 'esta tarea';
+      
+      if (!confirm(`¿Estás seguro de eliminar la tarea "${taskName}"?\n\n⚠️ Esta acción no se puede deshacer.`)) {
+        return;
+      }
+      
+      try {
+        const currentProjectId = projectSelect?.value;
+        if (!currentProjectId) {
+          alert('Error: No hay proyecto seleccionado');
+          return;
+        }
+        
+        const response = await fetch(`/crm/projects/${currentProjectId}/tasks/${taskId}`, { 
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || 'Error desconocido' };
+          }
+          throw new Error(errorData.error || `Error ${response.status}`);
+        }
+        
+        console.log('Tarea eliminada exitosamente desde modal');
+        alert('✅ Tarea eliminada exitosamente');
+        
+        closeTaskEditModal();
+        
+        // Recargar Gantt y lista de tareas
+        await renderGantt(currentProjectId);
+        await loadTasksList(currentProjectId);
+        await updateProjectProgress();
+      } catch(err) {
+        console.error('Error eliminando tarea desde modal:', err);
+        alert('❌ Error al eliminar tarea: ' + (err.message || 'Error desconocido'));
       }
     };
 
@@ -1317,12 +1385,13 @@
       </div>
         
         <div class="mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-sm font-medium text-gray-700">
+          <div class="flex items-center justify-between mb-2 gap-3">
+            <label class="block text-sm font-medium text-gray-700 flex-1">
               <i class="fas fa-filter mr-1"></i>Seleccionar Proyecto para Gestionar:
             </label>
-            <button id="deleteProjectBtn" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" title="Eliminar proyecto seleccionado">
-              <i class="fas fa-trash-alt mr-2"></i>Eliminar Proyecto
+            <button id="deleteProjectBtn" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap" title="Eliminar proyecto seleccionado y todas sus tareas">
+              <i class="fas fa-trash-alt"></i>
+              <span>Eliminar Proyecto</span>
             </button>
           </div>
           <select id="projectSelect" class="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent">
