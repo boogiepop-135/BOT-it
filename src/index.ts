@@ -51,14 +51,23 @@ process.on('SIGINT', async () => {
 
 // Conectar a MongoDB primero, luego inicializar el cliente de WhatsApp
 connectDB().then(async () => {
+    logger.info('MongoDB connected successfully, initializing bot...');
     // Inicializar el cliente después de conectar a MongoDB
     await botManager.initializeClient();
+    logger.info('Bot client initialized');
     initCrons(botManager);
+    logger.info('Crons initialized');
     botManager.initialize();
+    logger.info('Bot manager initialized');
 }).catch((error) => {
-    logger.error('Failed to initialize:', error);
-    // No hacer exit inmediatamente, intentar continuar
-    // process.exit(1);
+    logger.error('❌ Failed to initialize application:', error);
+    logger.error('Error stack:', error.stack);
+    // En producción, es mejor salir si no se puede conectar a la BD
+    if (EnvConfig.ENV === 'production') {
+        process.exit(1);
+    } else {
+        logger.warn('Continuing in development mode despite MongoDB connection failure');
+    }
 });
 
 app.set("view engine", "ejs");
