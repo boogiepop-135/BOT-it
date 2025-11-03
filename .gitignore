@@ -138,3 +138,14 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Google Sheets Service Account Credentials (NUNCA SUBIR A GIT)
+*-*.json
+*-*.*.json
+round-water-*.json
+*-key.json
+credentials/*.json
+keys/*.json
+*.credentials.json
+google-sheets-key.json
+service-account*.json
