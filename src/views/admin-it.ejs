@@ -316,10 +316,10 @@
                 </div>
               </div>
               <div class="flex gap-2 ml-3 flex-shrink-0">
-                <button onclick="openTaskEditModal('${taskId}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors shadow-sm hover:shadow" title="Editar tarea">
+                <button onclick="window.openTaskEditModal('${taskId}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors shadow-sm hover:shadow-md" title="Editar tarea">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button onclick="deleteTask('${taskId}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition-colors shadow-sm hover:shadow" title="Eliminar tarea">
+                <button onclick="window.deleteTask('${taskId}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition-colors shadow-sm hover:shadow-md" title="Eliminar tarea">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -369,12 +369,23 @@
       if (deleteBtn) {
         if (selectedValue && selectedValue !== '') {
           deleteBtn.classList.remove('hidden');
+          deleteBtn.disabled = false;
         } else {
           deleteBtn.classList.add('hidden');
+          deleteBtn.disabled = true;
         }
       }
       renderGantt(selectedValue);
     });
+    
+    // También verificar al cargar la página si hay un proyecto seleccionado
+    if (projectSelect && projectSelect.value && projectSelect.value !== '') {
+      const deleteBtn = document.getElementById('deleteProjectBtn');
+      if (deleteBtn) {
+        deleteBtn.classList.remove('hidden');
+        deleteBtn.disabled = false;
+      }
+    }
     
     reloadBtn?.addEventListener('click', () => renderGantt(projectSelect?.value || ''));
     viewMode?.addEventListener('change', () => gantt?.change_view_mode(viewMode.value));
