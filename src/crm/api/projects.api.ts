@@ -92,8 +92,15 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
             
             // Sincronizar automáticamente con Google Sheets si está habilitado
             try {
-                const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
-                await autoSyncIfEnabled();
+                const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+                if (spreadsheetId) {
+                    const { syncProjectToSheets, createSheetHeaders } = await import('../../utils/google-sheets.util');
+                    await createSheetHeaders(spreadsheetId, 'Proyectos', [
+                        'Nombre', 'Estado', 'Progreso (%)', 'Fecha Inicio', 'Fecha Fin', 'Prioridad', 'Última Actualización'
+                    ]);
+                    await syncProjectToSheets(spreadsheetId, 'Proyectos', savedObj);
+                    logger.info('✅ Proyecto sincronizado a Google Sheets');
+                }
             } catch (syncError: any) {
                 // No fallar la request si la sincronización falla (es opcional)
                 logger.warn('Auto-sync failed after project creation (optional):', syncError.message);
@@ -133,10 +140,13 @@ router.put('/projects/:projectId', authenticate, authorizePermission('projects',
         
         // Sincronizar automáticamente con Google Sheets si está habilitado
         try {
-            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
-            await autoSyncIfEnabled();
+            const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+            if (spreadsheetId) {
+                const { syncProjectToSheets } = await import('../../utils/google-sheets.util');
+                await syncProjectToSheets(spreadsheetId, 'Proyectos', project);
+                logger.info('✅ Proyecto actualizado sincronizado a Google Sheets');
+            }
         } catch (syncError: any) {
-            // No fallar la request si la sincronización falla (es opcional)
             logger.warn('Auto-sync failed after project update (optional):', syncError.message);
         }
         
@@ -183,10 +193,19 @@ router.post('/projects/:projectId/tasks', authenticate, authorizePermission('tas
         
         // Sincronizar automáticamente con Google Sheets si está habilitado
         try {
-            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
-            await autoSyncIfEnabled();
+            const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+            if (spreadsheetId) {
+                const project = await Project.findById(req.params.projectId).lean();
+                if (project) {
+                    const { syncTaskToSheets, createSheetHeaders } = await import('../../utils/google-sheets.util');
+                    await createSheetHeaders(spreadsheetId, 'Tareas', [
+                        'ID Tarea', 'Nombre', 'Proyecto', 'Estado', 'Progreso (%)', 'Fecha Inicio', 'Fecha Fin', 'Descripción', 'Última Actualización'
+                    ]);
+                    await syncTaskToSheets(spreadsheetId, 'Tareas', t.toObject ? t.toObject() : t, project.name || '');
+                    logger.info('✅ Tarea sincronizada a Google Sheets');
+                }
+            }
         } catch (syncError: any) {
-            // No fallar la request si la sincronización falla (es opcional)
             logger.warn('Auto-sync failed after task creation (optional):', syncError.message);
         }
         
@@ -210,10 +229,16 @@ router.put('/projects/:projectId/tasks/:taskId', authenticate, authorizePermissi
         
         // Sincronizar automáticamente con Google Sheets si está habilitado
         try {
-            const { autoSyncIfEnabled } = await import('../../utils/google-sheets.util');
-            await autoSyncIfEnabled();
+            const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+            if (spreadsheetId) {
+                const project = await Project.findById(req.params.projectId).lean();
+                if (project) {
+                    const { syncTaskToSheets } = await import('../../utils/google-sheets.util');
+                    await syncTaskToSheets(spreadsheetId, 'Tareas', task, project.name || '');
+                    logger.info('✅ Tarea actualizada sincronizada a Google Sheets');
+                }
+            }
         } catch (syncError: any) {
-            // No fallar la request si la sincronización falla (es opcional)
             logger.warn('Auto-sync failed after task update (optional):', syncError.message);
         }
         

@@ -1,167 +1,168 @@
-# 📊 Configuración de Google Sheets Integration
+# Configuración de Google Sheets API
 
-Esta guía explica cómo configurar la integración con Google Sheets para llenar y actualizar datos en hojas de Excel en línea desde WhatsApp.
+Esta guía te ayudará a configurar la integración con Google Sheets para que el bot pueda llenar y leer datos de hojas de Excel en línea.
 
-## 🚀 Configuración Rápida
-
-### 1. Crear un Service Account en Google Cloud
+## Paso 1: Crear un Proyecto en Google Cloud Console
 
 1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
 2. Crea un nuevo proyecto o selecciona uno existente
-3. Habilita la **Google Sheets API**:
+3. Habilita la **Google Sheets API** y **Google Drive API**:
    - Ve a "APIs & Services" > "Library"
-   - Busca "Google Sheets API"
-   - Haz clic en "Enable"
+   - Busca "Google Sheets API" y habilítala
+   - Busca "Google Drive API" y habilítala
 
-4. Crea un **Service Account**:
-   - Ve a "APIs & Services" > "Credentials"
-   - Haz clic en "Create Credentials" > "Service Account"
-   - Nombre: `whatsbot-sheets` (o el que prefieras)
-   - Role: "Editor" o "Owner"
-   - Haz clic en "Done"
+## Paso 2: Crear Service Account
 
-5. **Genera una clave JSON**:
-   - En la lista de Service Accounts, haz clic en el que acabas de crear
-   - Ve a la pestaña "Keys"
-   - Haz clic en "Add Key" > "Create new key"
-   - Selecciona "JSON"
-   - Descarga el archivo JSON
+1. Ve a "APIs & Services" > "Credentials"
+2. Haz clic en "Create Credentials" > "Service Account"
+3. Completa:
+   - **Service account name**: `whatsbot-sheets` (o el que prefieras)
+   - **Service account ID**: Se genera automáticamente
+   - Haz clic en "Create and Continue"
+4. En "Grant this service account access to project":
+   - Rol: `Editor` (o más restrictivo según tus necesidades)
+   - Haz clic en "Continue" > "Done"
 
-### 2. Compartir la Hoja de Google Sheets
+## Paso 3: Generar Clave JSON
 
-1. Abre tu hoja de Google Sheets
-2. Haz clic en "Compartir" (botón azul en la esquina superior derecha)
-3. Copia el **email del Service Account** (se ve como `whatsbot-sheets@tu-proyecto.iam.gserviceaccount.com`)
-4. Pega el email y dale permisos de **Editor**
-5. Haz clic en "Enviar"
+1. En la lista de Service Accounts, haz clic en el que acabas de crear
+2. Ve a la pestaña "Keys"
+3. Haz clic en "Add Key" > "Create new key"
+4. Selecciona formato **JSON**
+5. Haz clic en "Create"
+6. Se descargará un archivo JSON con las credenciales (guárdalo de forma segura)
 
-### 3. Obtener el ID de la Hoja
+## Paso 4: Compartir la Hoja de Google Sheets
 
-El ID de la hoja está en la URL:
-```
-https://docs.google.com/spreadsheets/d/[ESTE_ES_EL_ID]/edit
-```
+1. Abre o crea tu hoja de Google Sheets
+2. Haz clic en el botón **"Compartir"** (arriba a la derecha)
+3. En "Agregar personas o grupos", ingresa el **email del Service Account** (lo encuentras en el JSON descargado, campo `client_email`)
+   - Ejemplo: `whatsbot-sheets@tu-proyecto.iam.gserviceaccount.com`
+4. Da permisos de **"Editor"** al Service Account
+5. Haz clic en "Compartir"
+6. Copia el **ID de la hoja** desde la URL:
+   ```
+   https://docs.google.com/spreadsheets/d/[ESTE_ES_EL_ID]/edit
+   ```
 
-Por ejemplo, si tu URL es:
-```
-https://docs.google.com/spreadsheets/d/1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4aB5cD/edit
-```
+## Paso 5: Configurar Variables de Entorno
 
-El ID es: `1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4aB5cD`
+Tienes **3 opciones** para configurar las credenciales:
 
-### 4. Configurar Variables de Entorno
+### Opción A: Archivo JSON (Recomendado para desarrollo local)
 
-Tienes dos opciones para configurar las credenciales:
-
-#### Opción A: Archivo JSON (Recomendado para desarrollo)
-
-1. Guarda el archivo JSON del Service Account en tu proyecto (ej: `credentials/google-sheets-key.json`)
+1. Coloca el archivo JSON descargado en el proyecto (por ejemplo, en `credentials/google-sheets-key.json`)
 2. Agrega a tu `.env`:
+   ```env
+   GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY=credentials/google-sheets-key.json
+   GOOGLE_SHEETS_SPREADSHEET_ID=tu_id_de_la_hoja_aqui
+   ```
+
+### Opción B: Variables de Entorno Directas (Recomendado para producción en Railway/Render)
+
+Agrega estas variables de entorno:
+
 ```env
-GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY=./credentials/google-sheets-key.json
-GOOGLE_SHEETS_SPREADSHEET_ID=1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4aB5cD
-GOOGLE_SHEETS_AUTO_SYNC=true  # Opcional: sincronización automática
+GOOGLE_SHEETS_CLIENT_EMAIL=whatsbot-sheets@tu-proyecto.iam.gserviceaccount.com
+GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...tu clave privada...\n-----END PRIVATE KEY-----\n"
+GOOGLE_SHEETS_PROJECT_ID=tu-proyecto-id
+GOOGLE_SHEETS_SPREADSHEET_ID=tu_id_de_la_hoja_aqui
 ```
 
-#### Opción B: JSON String (Recomendado para producción/Railway)
+**Nota importante**: El `PRIVATE_KEY` debe incluir los caracteres `\n` literalmente, no saltos de línea reales. Si estás usando Railway/Render, copia el valor del JSON y reemplaza los saltos de línea reales con `\n`.
 
-1. Lee el contenido del archivo JSON
-2. Conviértelo a una sola línea (sin saltos de línea)
-3. Agrega a tu `.env` o variables de entorno de Railway:
+### Opción C: JSON como String (Alternativa)
+
+Si prefieres, puedes pasar el JSON completo como string:
+
 ```env
-GOOGLE_SHEETS_CREDENTIALS={"type":"service_account","project_id":"tu-proyecto",...}
-GOOGLE_SHEETS_SPREADSHEET_ID=1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4aB5cD
-GOOGLE_SHEETS_AUTO_SYNC=true
+GOOGLE_SHEETS_CREDENTIALS={"type":"service_account","project_id":"...","private_key_id":"...","private_key":"...","client_email":"...","client_id":"...","auth_uri":"...","token_uri":"...","auth_provider_x509_cert_url":"...","client_x509_cert_url":"..."}
+GOOGLE_SHEETS_SPREADSHEET_ID=tu_id_de_la_hoja_aqui
 ```
 
-## 📝 Comandos de WhatsApp
+## Paso 6: Estructura de las Hojas
 
-Una vez configurado, puedes usar estos comandos desde WhatsApp:
+El bot automáticamente creará las siguientes hojas si no existen:
 
-### Actualizar Celda
-```
-"actualizar celda"
-o "llenar celda"
-```
-Te guiará paso a paso para actualizar una celda específica.
+### Hoja "Proyectos"
+Headers:
+- Nombre
+- Estado
+- Progreso (%)
+- Fecha Inicio
+- Fecha Fin
+- Prioridad
+- Última Actualización
 
-### Buscar y Actualizar Fila
-```
-"actualizar fila"
-o "buscar y actualizar"
-```
-Busca una fila por un valor y actualiza otra columna.
+### Hoja "Tareas"
+Headers:
+- ID Tarea
+- Nombre
+- Proyecto
+- Estado
+- Progreso (%)
+- Fecha Inicio
+- Fecha Fin
+- Descripción
+- Última Actualización
 
-### Agregar Fila
+## Uso desde WhatsApp
+
+Una vez configurado, puedes usar estos comandos:
+
+### Llenar/Actualizar Hoja
 ```
-"agregar fila"
-o "nueva fila"
+llenar hoja
 ```
-Agrega una nueva fila al final de la hoja.
+El bot te pedirá:
+1. Rango (ej: `A1` o `Proyectos!A1:B10`)
+2. Valor o valores (ej: `75` o `Proyecto A, 75%, Activo`)
 
 ### Leer Hoja
 ```
-"leer hoja"
-o "ver hoja"
+leer hoja
 ```
-Lee y muestra datos de un rango específico.
+El bot te pedirá el rango a leer (ej: `A1:B10` o `Proyectos!A:A`)
 
-### Sincronizar Proyectos
+### Sincronizar Proyecto
 ```
-"sincronizar proyectos"
-o "sync"
+sincronizar proyecto [nombre del proyecto]
 ```
-Sincroniza todos los proyectos de la base de datos a una hoja llamada "Proyectos".
+Sincroniza un proyecto específico y sus tareas a Google Sheets
 
-## 🔄 Sincronización Automática
+### Sincronizar Todo
+```
+sincronizar todo
+```
+Sincroniza todos los proyectos y tareas a Google Sheets
 
-Si configuraste `GOOGLE_SHEETS_AUTO_SYNC=true`, el sistema sincronizará automáticamente los proyectos cuando:
+## Sincronización Automática
 
-- Se crea un nuevo proyecto
-- Se actualiza un proyecto
-- Se crea una nueva tarea
-- Se actualiza una tarea
+El bot **automáticamente sincroniza** cuando:
+- ✅ Se crea un nuevo proyecto
+- ✅ Se actualiza un proyecto
+- ✅ Se crea una nueva tarea
+- ✅ Se actualiza una tarea
 
-La sincronización es opcional y no fallará la operación principal si hay algún error.
+La sincronización es **opcional** y no bloqueará las operaciones si falla.
 
-## 📋 Estructura de la Hoja "Proyectos"
+## Solución de Problemas
 
-Cuando sincronizas proyectos, se crea/actualiza una hoja con esta estructura:
+### Error: "Google Sheets API no inicializada"
+- Verifica que las variables de entorno estén configuradas
+- Revisa los logs para ver detalles del error
 
-| Proyecto | Estado | Progreso (%) | Prioridad | Fecha Inicio | Fecha Fin | Tareas Totales | Tareas Completadas |
-|----------|--------|--------------|-----------|--------------|-----------|----------------|-------------------|
-| Proyecto A | En Progreso | 75 | Media | 01/11/2025 | 15/12/2025 | 10 | 7 |
-
-## ⚠️ Notas Importantes
-
-1. **Permisos**: Asegúrate de que el Service Account tenga permisos de "Editor" en la hoja
-2. **ID de Hoja**: El ID debe ser correcto, de lo contrario recibirás errores
-3. **Formato de Rangos**: Usa el formato `Hoja1!A1` o `Hoja1!A1:B10` para rangos
-4. **Sincronización Automática**: Puede tardar unos segundos, es normal
-5. **Errores**: Si hay errores, verifica los logs del servidor
-
-## 🐛 Solución de Problemas
-
-### Error: "Authentication failed"
-- Verifica que el archivo JSON del Service Account sea correcto
-- Asegúrate de que el Service Account esté habilitado
-
-### Error: "Permission denied"
-- Verifica que compartiste la hoja con el email del Service Account
-- Asegúrate de dar permisos de "Editor"
+### Error: "Permission denied" o "Forbidden"
+- Asegúrate de haber compartido la hoja con el email del Service Account
+- Verifica que el Service Account tenga permisos de "Editor"
 
 ### Error: "Spreadsheet not found"
-- Verifica que el ID de la hoja sea correcto
-- Asegúrate de que la hoja existe y está accesible
+- Verifica que el `GOOGLE_SHEETS_SPREADSHEET_ID` sea correcto
+- El ID está en la URL de la hoja: `https://docs.google.com/spreadsheets/d/[ID]/edit`
 
-### La sincronización no funciona
-- Verifica que `GOOGLE_SHEETS_AUTO_SYNC=true` esté configurado
-- Verifica que `GOOGLE_SHEETS_SPREADSHEET_ID` esté configurado
-- Revisa los logs del servidor para más detalles
+## Seguridad
 
-## 📚 Recursos
-
-- [Google Sheets API Documentation](https://developers.google.com/sheets/api)
-- [Service Accounts Guide](https://cloud.google.com/iam/docs/service-accounts)
-- [Node.js Google APIs Client](https://github.com/googleapis/google-api-nodejs-client)
-
+⚠️ **IMPORTANTE**: 
+- Nunca subas el archivo JSON de credenciales a Git
+- Usa variables de entorno en producción
+- El Service Account debe tener solo los permisos necesarios (Editor de la hoja específica, no del proyecto completo)
