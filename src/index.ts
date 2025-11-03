@@ -73,17 +73,16 @@ connectDB().then(async () => {
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use("/public", express.static("public"));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Logging middleware para todas las requests
+// Logging middleware para todas las requests (DESPUÉS de bodyParser)
 app.use((req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
     logger.info(`${req.method} ${req.path} - Body: ${JSON.stringify(req.body)}`);
   }
   next();
 });
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 // Make botManager available to routes
 app.locals.botManager = botManager;
