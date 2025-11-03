@@ -71,6 +71,18 @@ export default function (botManager: BotManager) {
                 }
             );
             
+            // Avisar al usuario que IT se unirá personalmente a la conversación
+            try {
+                await botManager.sendMessageToUser(
+                    phoneNumber,
+                    `⏸️ *Bot Pausado*\n\n` +
+                    `Tu acceso al bot ha sido pausado temporalmente.\n\n` +
+                    `👨‍💻 El equipo de IT se unirá de forma personal a esta conversación en breve para asistirte.`
+                );
+            } catch (e) {
+                logger.warn('No se pudo enviar mensaje de pausa al usuario via API:', e);
+            }
+            
             res.json({ success: true, message: 'Usuario pausado' });
         } catch (error) {
             logger.error('Failed to pause user:', error);

@@ -356,7 +356,7 @@ async function processAdminConversation(message: Message, conversation: AdminCon
                     usuarioPausar,
                     `⏸️ *Bot Pausado*\n\n` +
                     `Tu acceso al bot ha sido pausado temporalmente.\n\n` +
-                    `📧 Para reactivarlo, contacta al administrador.`
+                    `👨‍💻 El equipo de IT se unirá de forma personal a esta conversación en breve para asistirte.`
                 );
             } catch (error: any) {
                 logger.error('Error pausando usuario:', error);
