@@ -14,8 +14,9 @@ export async function initializeGoogleSheets(): Promise<boolean> {
     // Verificar si hay credenciales configuradas
     const credentialsPath = EnvConfig.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY || 
                             process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY;
+    const credsJsonInline = process.env.GOOGLE_CREDS_JSON;
     
-    if (!credentialsPath && !process.env.GOOGLE_SHEETS_CLIENT_EMAIL && !process.env.GOOGLE_SHEETS_PRIVATE_KEY) {
+    if (!credentialsPath && !credsJsonInline && !process.env.GOOGLE_SHEETS_CLIENT_EMAIL && !process.env.GOOGLE_SHEETS_PRIVATE_KEY) {
       logger.warn('⚠️  Google Sheets API no configurada. Variables de entorno faltantes.');
       return false;
     }
@@ -35,6 +36,16 @@ export async function initializeGoogleSheets(): Promise<boolean> {
 
       credentials = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
       logger.info('✅ Credenciales de Google Sheets cargadas desde archivo');
+    }
+    // Opción 1b: JSON inline via GOOGLE_CREDS_JSON
+    else if (credsJsonInline) {
+      try {
+        credentials = JSON.parse(credsJsonInline);
+        logger.info('✅ Credenciales de Google Sheets cargadas desde GOOGLE_CREDS_JSON');
+      } catch (e) {
+        logger.error('❌ GOOGLE_CREDS_JSON no es un JSON válido');
+        return false;
+      }
     }
     // Opción 2: Variables de entorno directas
     else if (process.env.GOOGLE_SHEETS_CLIENT_EMAIL && process.env.GOOGLE_SHEETS_PRIVATE_KEY) {
@@ -68,6 +79,26 @@ export async function initializeGoogleSheets(): Promise<boolean> {
   } catch (error: any) {
     logger.error('❌ Error inicializando Google Sheets:', error);
     return false;
+  }
+}
+
+/**
+ * Obtiene metadatos del Spreadsheet (título y nombres de pestañas)
+ */
+export async function getSpreadsheetMetadata(spreadsheetId: string): Promise<{ title: string; sheets: string[] } | null> {
+  try {
+    if (!sheetsClient) {
+      const initialized = await initializeGoogleSheets();
+      if (!initialized) return null;
+    }
+
+    const response = await sheetsClient.spreadsheets.get({ spreadsheetId });
+    const title = response.data.properties?.title || '';
+    const sheets = (response.data.sheets || []).map((s: any) => s.properties?.title).filter(Boolean);
+    return { title, sheets };
+  } catch (error: any) {
+    logger.error('❌ Error obteniendo metadatos del Spreadsheet:', error);
+    return null;
   }
 }
 

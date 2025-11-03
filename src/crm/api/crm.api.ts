@@ -9,6 +9,7 @@ import { PaymentReminderModel } from '../models/payment-reminder.model';
 import { AuthService } from '../utils/auth.util';
 import { sendRoleAssignmentMessage } from '../../utils/role-assignment.util';
 import projectsApi from './projects.api';
+import sheetsApi from './sheets.api';
 import rhApi from './rh.api';
 import financeApi from './finance.api';
 import feedbackApi from './feedback.api';
@@ -535,6 +536,7 @@ export default function (botManager: BotManager) {
 
   // Sub-routers CRM
   router.use('/', projectsApi);
+  router.use('/sheets', sheetsApi());
   router.use('/rh', rhApi);
   router.use('/finance', financeApi);
   router.use('/', feedbackApi);
