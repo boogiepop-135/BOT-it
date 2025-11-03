@@ -127,6 +127,29 @@ router.put('/projects/:projectId', authenticate, authorizePermission('projects',
     }
 });
 
+router.delete('/projects/:projectId', authenticate, authorizePermission('projects','write'), async (req, res) => {
+    try {
+        logger.info(`DELETE /projects/${req.params.projectId} - Deleting project`);
+        
+        // Primero eliminar todas las tareas del proyecto
+        const tasksDeleted = await Task.deleteMany({ projectId: req.params.projectId });
+        logger.info(`   - Deleted ${tasksDeleted.deletedCount} tasks`);
+        
+        // Luego eliminar el proyecto
+        const project = await Project.findByIdAndDelete(req.params.projectId).lean().exec();
+        if (!project) {
+            logger.warn(`   - Project ${req.params.projectId} not found`);
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        
+        logger.info(`✅ Project deleted successfully: ${req.params.projectId}`);
+        res.json({ success: true, message: 'Project deleted', deletedTasks: tasksDeleted.deletedCount });
+    } catch (e:any) {
+        logger.error('Delete project failed', e);
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // Tasks
 router.get('/projects/:projectId/tasks', authenticate, authorizePermission('tasks','read'), async (req, res) => {
     const tasks = await Task.find({ projectId: req.params.projectId }).sort({ startDate: 1 }).lean().exec();

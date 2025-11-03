@@ -5,10 +5,11 @@ import { ContactModel } from "../crm/models/contact.model";
 import logger from "../configs/logger.config";
 
 export interface AdminConversation {
-    step: 'command' | 'send_user' | 'send_message' | 'redirect_target' | 'redirect_message' | 'pause_user' | 'resume_user' | 'none';
+    step: 'command' | 'send_user' | 'send_message' | 'redirect_target' | 'redirect_message' | 'pause_user' | 'resume_user' | 'resolve_ticket' | 'resolve_solution' | 'none';
     action?: string;
     targetUser?: string;
     message?: string;
+    ticketId?: string;
 }
 
 export const conversations = new Map<string, AdminConversation>();
@@ -84,28 +85,51 @@ export const run = async (message: Message, args: string[] | null, userI18n: Use
             return;
         }
 
-        // Si no se detecta intención, mostrar ayuda
+        if (textoMensaje.includes("tickets abiertos") || textoMensaje.includes("ver tickets") ||
+            textoMensaje.includes("tickets pendientes") || textoMensaje.includes("lista tickets")) {
+            await verTicketsAbiertos(message);
+            return;
+        }
+
+        if (textoMensaje.includes("resolver ticket") || textoMensaje.includes("cerrar ticket") ||
+            textoMensaje.includes("resolver") || textoMensaje.match(/resolver.*tkt|resolver.*ticket/i)) {
+            await iniciarResolverTicket(message, userNumber);
+            return;
+        }
+
+        if (textoMensaje.includes("métricas tickets") || textoMensaje.includes("metricas tickets") ||
+            textoMensaje.includes("estadísticas tickets") || textoMensaje.includes("estadisticas tickets")) {
+            await mostrarMetricasTickets(message);
+            return;
+        }
+
+        // Si no se detecta intención, mostrar menú mejorado para Levi
         await message.reply(
             `🔧 *Panel de Administración - Levi Villarreal*\n\n` +
-            `Comandos administrativos disponibles:\n\n` +
-            `📤 *ENVIAR MENSAJE*\n` +
-            `"enviar mensaje" o "mandar mensaje"\n` +
-            `Enviar mensaje a un usuario específico.\n\n` +
-            `🔄 *REDIRECCIONAR MENSAJE*\n` +
-            `"redireccionar" o "redirigir"\n` +
-            `Reenviar un mensaje a otro usuario.\n\n` +
-            `⏸️ *PAUSAR USUARIO*\n` +
-            `"pausar usuario"\n` +
-            `Pausar bot para un usuario específico.\n\n` +
-            `▶️ *REANUDAR USUARIO*\n` +
-            `"reanudar usuario"\n` +
-            `Reactivar bot para un usuario.\n\n` +
-            `👥 *LISTAR USUARIOS*\n` +
-            `"usuarios" o "lista usuarios"\n` +
-            `Ver lista de usuarios del sistema.\n\n` +
-            `📊 *ESTADÍSTICAS*\n` +
+            `👋 ¡Hola Levi! Menú administrativo personalizado:\n\n` +
+            `📋 *GESTIÓN DE TICKETS* (Tu área principal)\n` +
+            `"tickets abiertos" o "ver tickets"\n` +
+            `Ver todos los tickets pendientes de resolución.\n\n` +
+            `✅ *RESOLVER TICKET*\n` +
+            `"resolver ticket" o "cerrar ticket"\n` +
+            `Resolver un ticket específico con solución.\n\n` +
+            `📊 *MÉTRICAS DE TICKETS*\n` +
+            `"métricas tickets" o "estadísticas tickets"\n` +
+            `Ver estadísticas de tickets (abiertos, resueltos, tiempos).\n\n` +
+            `👥 *GESTIÓN DE USUARIOS*\n` +
+            `"usuarios" - Ver lista de usuarios\n` +
+            `"pausar usuario [número]" - Pausar acceso\n` +
+            `"reanudar usuario [número]" - Reactivar acceso\n\n` +
+            `💬 *COMUNICACIÓN*\n` +
+            `"enviar mensaje" - Enviar mensaje a usuario\n` +
+            `"redireccionar" - Redirigir mensaje entre usuarios\n\n` +
+            `📊 *ESTADÍSTICAS DEL SISTEMA*\n` +
             `"estadisticas" o "stats"\n` +
-            `Ver estadísticas del sistema.\n\n` +
+            `Ver métricas generales del sistema.\n\n` +
+            `🔧 *OTROS COMANDOS*\n` +
+            `"proyectos" - Ver proyectos IT\n` +
+            `"tareas" - Ver tareas activas\n` +
+            `"reportes" - Ver reportes programados\n\n` +
             `_Escribe \`cancel\` en cualquier momento para cancelar._`
         );
     } catch (error) {
@@ -378,6 +402,109 @@ async function processAdminConversation(message: Message, conversation: AdminCon
             }
             
             conversations.delete(userNumber);
+            break;
+
+        case 'resolve_ticket':
+            const ticketId = texto.trim();
+            if (!ticketId) {
+                await message.reply('❌ Por favor, proporciona el número del ticket.');
+                return;
+            }
+            
+            try {
+                const { TicketModel } = await import('../crm/models/ticket.model');
+                
+                // Buscar ticket por número o ID
+                const ticket = await TicketModel.findOne({
+                    $or: [
+                        { ticketNumber: ticketId },
+                        { _id: ticketId }
+                    ]
+                }).lean();
+                
+                if (!ticket) {
+                    await message.reply(`❌ Ticket no encontrado: ${ticketId}\n\nVerifica el número del ticket e intenta de nuevo.`);
+                    return;
+                }
+                
+                if ((ticket as any).status === 'resolved' || (ticket as any).status === 'closed') {
+                    await message.reply(`⚠️ Este ticket ya está ${(ticket as any).status === 'resolved' ? 'resuelto' : 'cerrado'}.\n\nTicket: ${(ticket as any).ticketNumber || ticketId}`);
+                    conversations.delete(userNumber);
+                    return;
+                }
+                
+                conversation.ticketId = (ticket as any)._id?.toString() || ticketId;
+                conversation.step = 'resolve_solution';
+                
+                await message.reply(
+                    `✅ *Ticket Encontrado*\n\n` +
+                    `🎫 *Ticket:* ${(ticket as any).ticketNumber || ticketId}\n` +
+                    `📝 *Título:* ${(ticket as any).title || 'Sin título'}\n` +
+                    `📍 *Sucursal:* ${(ticket as any).sucursal || 'N/A'}\n` +
+                    `🏷️ *Categoría:* ${(ticket as any).category || 'N/A'}\n\n` +
+                    `📝 *Paso 2: Solución*\n\n` +
+                    `¿Cuál fue la solución aplicada?\n\n` +
+                    `Escribe la descripción de la solución:`
+                );
+            } catch (error: any) {
+                logger.error('Error buscando ticket:', error);
+                await message.reply(`❌ Error al buscar ticket: ${error.message || 'Error desconocido'}`);
+                conversations.delete(userNumber);
+            }
+            break;
+
+        case 'resolve_solution':
+            const solution = texto.trim();
+            if (!solution) {
+                await message.reply('❌ La solución no puede estar vacía. Por favor, describe la solución aplicada.');
+                return;
+            }
+            
+            try {
+                const { TicketModel } = await import('../crm/models/ticket.model');
+                const ticket = await TicketModel.findById(conversation.ticketId);
+                
+                if (!ticket) {
+                    await message.reply('❌ Ticket no encontrado. La sesión ha sido cancelada.');
+                    conversations.delete(userNumber);
+                    return;
+                }
+                
+                // Actualizar ticket
+                ticket.status = 'resolved';
+                ticket.resolvedAt = new Date();
+                ticket.solution = solution;
+                
+                // Calcular tiempo de resolución
+                if (ticket.createdAt) {
+                    const resolutionTime = (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60);
+                    ticket.resolutionTime = Math.round(resolutionTime);
+                }
+                
+                await ticket.save();
+                
+                // Enviar mensaje al usuario
+                const autoMessage = `✅ Tu ticket *${ticket.ticketNumber}* "${ticket.title}" ha sido resuelto.\n\n` +
+                    `🔧 *Solución:*\n${solution}\n\n` +
+                    `Gracias por usar nuestro sistema de soporte.`;
+                
+                await botManager.sendMessageToUser(ticket.createdBy, autoMessage);
+                
+                await message.reply(
+                    `✅ *Ticket Resuelto Exitosamente*\n\n` +
+                    `🎫 *Ticket:* ${ticket.ticketNumber}\n` +
+                    `📝 *Título:* ${ticket.title}\n` +
+                    `✅ *Solución aplicada*\n` +
+                    `⏱️ *Tiempo de resolución:* ${ticket.resolutionTime || 'N/A'} minutos\n\n` +
+                    `El usuario ha sido notificado.`
+                );
+                
+                conversations.delete(userNumber);
+            } catch (error: any) {
+                logger.error('Error resolviendo ticket:', error);
+                await message.reply(`❌ Error al resolver ticket: ${error.message || 'Error desconocido'}`);
+                conversations.delete(userNumber);
+            }
             break;
     }
 
