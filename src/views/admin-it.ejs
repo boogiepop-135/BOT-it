@@ -404,7 +404,11 @@
     if (!projectId) return;
     if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
     try {
-      await fetch(`/crm/projects/${projectId}`, { method: 'DELETE' });
+      const res = await fetch(`/crm/projects/${projectId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Error HTTP');
+      }
       // Recargar selector y limpiar vista
       await window.loadProjectsForGantt();
       const el = document.getElementById('gantt');
@@ -423,13 +427,32 @@
     if (!projectId) return;
     if (!confirm('¿Marcar el proyecto como completado y notificar a dirección?')) return;
     try {
-      await fetch(`/crm/projects/${projectId}/complete`, { method: 'POST' });
+      const res = await fetch(`/crm/projects/${projectId}/complete`, { method: 'POST' });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Error HTTP');
+      }
       await renderGantt(projectId);
       alert('Proyecto completado y notificado.');
     } catch (e) {
       alert('Error completando el proyecto');
     }
   });
+
+  // Cargar Gantt al cambiar selección
+  const projectSelectEl = document.getElementById('projectSelect');
+  if (projectSelectEl) {
+    projectSelectEl.addEventListener('change', async (ev) => {
+      const value = (ev.target as any)?.value || projectSelectEl['value'];
+      if (value) {
+        await renderGantt(value);
+      } else {
+        // Ocultar botones si no hay selección
+        document.getElementById('deleteProjectBtn')?.classList.add('hidden');
+        document.getElementById('completeProjectBtn')?.classList.add('hidden');
+      }
+    });
+  }
     viewMode?.addEventListener('change', () => gantt?.change_view_mode(viewMode.value));
     
     // Event listener para eliminar proyecto
@@ -1219,7 +1242,7 @@
         drawer.style.transform = open ? 'translateX(0)' : 'translateX(100%)';
         backdrop.classList.toggle('hidden', !open);
       }
-      openSettings.addEventListener('click', async () => {
+      if (openSettings) openSettings.addEventListener('click', async () => {
         // Cargar valores actuales
         cfgApi.value = (localStorage.getItem('apiBaseUrl') || API_BASE_URL || '');
         cfgSheet.value = (localStorage.getItem('defaultSheetUrl') || urlInput.value || '');
@@ -1230,8 +1253,8 @@
         if (defCol && cols.includes(defCol)) cfgCol.value = defCol;
         toggleDrawer(true);
       });
-      closeSettings.addEventListener('click', () => toggleDrawer(false));
-      backdrop.addEventListener('click', () => toggleDrawer(false));
+      closeSettings && closeSettings.addEventListener('click', () => toggleDrawer(false));
+      backdrop && backdrop.addEventListener('click', () => toggleDrawer(false));
 
       cfgSave.addEventListener('click', () => {
         try{
