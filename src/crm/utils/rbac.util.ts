@@ -13,6 +13,12 @@ export const ROLES = {
 export const ROLE_PERMISSIONS: Record<string, Record<string, ('read'|'write'|'manage')[]>> = {
 	[ROLES.CEO]: { '*': ['manage'] },
 	[ROLES.ADMIN]: { '*': ['manage'] },
+	// Permisos para roles de contactos (salma, francisco, desarrollo_estrategia_inrra, boss)
+	'salma': { projects: ['read'], tasks: ['read'] },
+	'francisco': { projects: ['read'], tasks: ['read'] },
+	'desarrollo_estrategia_inrra': { projects: ['read', 'write'], tasks: ['read', 'write'] },
+	'boss': { projects: ['read'], tasks: ['read'] },
+	'ceo': { projects: ['read'], tasks: ['read'] },
 	[ROLES.RH_COMPRAS]: {
 		requests: ['manage']
 	},

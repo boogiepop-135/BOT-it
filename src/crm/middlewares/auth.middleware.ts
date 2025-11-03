@@ -74,6 +74,13 @@ export const authorizePermission = (resource: string, action: 'read' | 'write' |
       return next();
     }
     
+    // Verificar roles especiales de contactos (salma, francisco, desarrollo_estrategia_inrra)
+    if (role === 'salma' || role === 'francisco' || role === 'desarrollo_estrategia_inrra' || role === 'boss' || role === 'ceo') {
+      const rolePerms = ROLE_PERMISSIONS[role] || {};
+      const allowed = rolePerms[resource]?.includes(action) || rolePerms[resource]?.includes('manage');
+      if (allowed) return next();
+    }
+    
     // Verificar permiso específico del recurso
     const allowed = perms[resource]?.includes(action) || perms[resource]?.includes('manage');
     if (!allowed) return res.status(403).json({ error: 'Forbidden' });

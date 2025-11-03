@@ -16,7 +16,21 @@ router.get('/projects', authenticate, authorizePermission('projects','read'), as
 
 router.post('/projects', authenticate, authorizePermission('projects','write'), async (req, res) => {
     try {
-        const p = new ProjectModel(req.body);
+        const body = { ...req.body };
+        
+        // Si no hay fecha de inicio o fin, establecer status como 'planned' (por plantear)
+        if (!body.startDate && !body.endDate) {
+            body.status = 'planned';
+        } else if (!body.status) {
+            // Si hay fechas pero no se especificó status, verificar si ya pasó la fecha de inicio
+            if (body.startDate && new Date(body.startDate) <= new Date()) {
+                body.status = 'in_progress';
+            } else {
+                body.status = 'planned';
+            }
+        }
+        
+        const p = new ProjectModel(body);
         await p.save();
         res.status(201).json(p);
     } catch (e:any) {
