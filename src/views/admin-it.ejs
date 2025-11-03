@@ -1267,6 +1267,10 @@
         <i class="fas fa-user-friends w-5"></i>
         <span>Usuarios</span>
       </a>
+      <a href="#" id="nav-sheets" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-table w-5"></i>
+        <span>Integraciones Sheets</span>
+      </a>
       <a href="#" data-section="reminders" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
         <i class="fas fa-bell w-5"></i>
         <span>Recordatorios</span>
@@ -1877,6 +1881,128 @@
       <!-- Reports content -->
     </div>
   </main>
+
+  <!-- Modal Sheets Integrations -->
+  <div id="sheets-backdrop" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
+  <div id="sheets-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl rounded-lg shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b">
+        <h3 class="text-lg font-semibold">Integraciones con Google Sheets</h3>
+        <button id="sheets-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-4">
+        <p id="sheets-msg" class="text-sm text-gray-600 mb-3"></p>
+        <div id="sheets-list" class="divide-y"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Modal logic for Sheets integrations
+    (function initSheetsModal(){
+      const openBtn = document.getElementById('nav-sheets');
+      const modal = document.getElementById('sheets-modal');
+      const backdrop = document.getElementById('sheets-backdrop');
+      const closeBtn = document.getElementById('sheets-close');
+      const list = document.getElementById('sheets-list');
+      const msg = document.getElementById('sheets-msg');
+
+      function setMsg(t, kind='info'){
+        msg.textContent = t || '';
+        msg.className = 'text-sm mb-3 ' + (kind==='error'?'text-red-600':'text-gray-600');
+      }
+      function open(){ modal.classList.remove('hidden'); backdrop.classList.remove('hidden'); }
+      function close(){ modal.classList.add('hidden'); backdrop.classList.add('hidden'); }
+
+      async function fetchJSON(url, options={}){
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      }
+
+      async function loadCollections(){
+        try{
+          const data = await fetchJSON('/crm/sheets/db/collections/list');
+          return data.collections || [];
+        }catch(e){ return []; }
+      }
+
+      function renderRow(collection){
+        const row = document.createElement('div');
+        row.className = 'py-3 flex flex-col md:flex-row md:items-center md:space-x-3';
+        row.innerHTML = `
+          <div class="flex-1 font-medium">${collection}</div>
+          <div class="flex-1 w-full md:w-auto">
+            <input type="text" placeholder="https://docs.google.com/spreadsheets/d/ID/edit" class="url-input w-full border rounded px-3 py-2" />
+          </div>
+          <div class="mt-2 md:mt-0">
+            <button class="connect-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Conectar</button>
+          </div>
+          <div class="mt-2 md:mt-0 hidden sheet-select-wrap md:w-64">
+            <select class="sheet-select border rounded px-2 py-2 w-full"></select>
+          </div>
+          <div class="mt-2 md:mt-0 hidden map-wrap">
+            <button class="map-btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded">Vincular</button>
+          </div>
+        `;
+
+        const input = row.querySelector('.url-input');
+        const connectBtn = row.querySelector('.connect-btn');
+        const sheetWrap = row.querySelector('.sheet-select-wrap');
+        const sheetSelect = row.querySelector('.sheet-select');
+        const mapWrap = row.querySelector('.map-wrap');
+        const mapBtn = row.querySelector('.map-btn');
+
+        connectBtn.addEventListener('click', async () => {
+          const url = input.value.trim();
+          if (!url) { setMsg('Ingresa una URL para '+collection, 'error'); return; }
+          connectBtn.disabled = true;
+          try{
+            setMsg('Conectando...');
+            const r = await fetchJSON('/crm/sheets/connect', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url }) });
+            const integ = r.data;
+            const meta = await fetchJSON(`/crm/sheets/${integ._id}/sheets`);
+            sheetSelect.innerHTML = (meta.sheets||[]).map(s=>`<option value="${s}">${s}</option>`).join('');
+            sheetWrap.classList.remove('hidden');
+            mapWrap.classList.remove('hidden');
+            // Guardar id de integración en el botón para mapping posterior
+            mapBtn.setAttribute('data-integ', integ._id);
+            setMsg('Elige una hoja y pulsa Vincular');
+          } catch(e){
+            setMsg('Error al conectar la hoja para '+collection, 'error');
+          } finally { connectBtn.disabled = false; }
+        });
+
+        mapBtn.addEventListener('click', async () => {
+          const integId = mapBtn.getAttribute('data-integ');
+          const sheetName = sheetSelect.value;
+          if (!integId || !sheetName) { setMsg('Selecciona una hoja', 'error'); return; }
+          mapBtn.disabled = true;
+          try{
+            await fetch(`/crm/sheets/${integId}/map`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sheetName, collection }) });
+            setMsg(`Colección ${collection} vinculada a "${sheetName}"`);
+          } catch(e){ setMsg('Error al vincular', 'error'); }
+          finally { mapBtn.disabled = false; }
+        });
+
+        return row;
+      }
+
+      async function openAndRender(){
+        setMsg('Cargando colecciones...');
+        list.innerHTML = '';
+        open();
+        const cols = await loadCollections();
+        if (cols.length === 0) { setMsg('No hay colecciones disponibles'); return; }
+        setMsg('');
+        cols.forEach(c => list.appendChild(renderRow(c)));
+      }
+
+      openBtn.addEventListener('click', (e) => { e.preventDefault(); openAndRender(); });
+      closeBtn.addEventListener('click', close);
+      backdrop.addEventListener('click', close);
+    })();
+  </script>
 
   <!-- Ticket Modal -->
   <div id="ticket-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
