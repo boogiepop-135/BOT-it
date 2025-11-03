@@ -213,21 +213,32 @@
         
         statusTasks.forEach(t => {
           const progress = t.progress || 0;
-          const progressBar = generateProgressBar(progress);
+          const isDone = t.status === 'done';
+          const taskId = t._id;
           
           const taskDiv = document.createElement('div');
-          taskDiv.className = 'bg-white rounded-lg shadow-sm p-4 border border-gray-200';
+          taskDiv.className = `bg-white rounded-lg shadow-sm p-4 border-2 transition-all duration-200 ${isDone ? 'border-green-400 bg-green-50' : 'border-gray-200'}`;
+          taskDiv.id = `task-${taskId}`;
+          
           taskDiv.innerHTML = `
-            <div class="flex items-start justify-between mb-2">
+            <div class="flex items-start gap-3 mb-2">
+              <div class="flex items-center pt-1">
+                <input type="checkbox" 
+                       id="task-checkbox-${taskId}" 
+                       ${isDone ? 'checked' : ''}
+                       class="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer transition-all"
+                       onchange="toggleTaskComplete('${taskId}', this.checked)"
+                       title="${isDone ? 'Desmarcar como completada' : 'Marcar como completada'}">
+              </div>
               <div class="flex-1">
-                <h5 class="font-medium text-gray-800 mb-1">${t.name}</h5>
-                ${t.description ? `<p class="text-sm text-gray-600 mb-2">${t.description}</p>` : ''}
+                <h5 class="font-medium text-gray-800 mb-1 ${isDone ? 'line-through text-gray-500' : ''}">${t.name}</h5>
+                ${t.description ? `<p class="text-sm text-gray-600 mb-2 ${isDone ? 'line-through text-gray-400' : ''}">${t.description}</p>` : ''}
               </div>
               <div class="flex gap-2 ml-3">
-                <button onclick="openTaskEditModal('${t._id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" title="Editar">
+                <button onclick="openTaskEditModal('${taskId}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm" title="Editar">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button onclick="deleteTask('${t._id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" title="Eliminar">
+                <button onclick="deleteTask('${taskId}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm" title="Eliminar">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -235,10 +246,10 @@
             <div class="mb-2">
               <div class="flex justify-between text-xs mb-1">
                 <span class="font-medium text-gray-600">Progreso</span>
-                <span class="font-bold text-gray-800">${progress}%</span>
+                <span class="font-bold ${isDone ? 'text-green-600' : 'text-gray-800'}">${progress}%</span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                <div class="${isDone ? 'bg-green-600' : 'bg-blue-600'} h-2.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
               </div>
             </div>
             <div class="flex items-center justify-between text-xs text-gray-500">
@@ -247,6 +258,7 @@
                 ${t.endDate ? `<span><i class="fas fa-calendar-check mr-1"></i>Fin: ${new Date(t.endDate).toLocaleDateString('es-MX')}</span>` : ''}
               </div>
               ${t.dependencies?.length > 0 ? `<span class="text-blue-600"><i class="fas fa-link mr-1"></i>${t.dependencies.length} dependencia(s)</span>` : ''}
+              ${isDone ? '<span class="text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Completada</span>' : ''}
             </div>
           `;
           tasksContainer.appendChild(taskDiv);
@@ -314,6 +326,8 @@
         });
         taskForm.reset();
         await renderGantt(projectSelect.value);
+        await loadTasksList(projectSelect.value);
+        await updateProjectProgress();
       }catch(err){
         taskMsg.textContent = 'Error al crear: ' + (err.message || '');
       }
@@ -325,18 +339,33 @@
     });
 
     projectForm?.addEventListener('submit', async (e)=>{
-      e.preventDefault(); projMsg.textContent='';
+      e.preventDefault(); 
+      projMsg.textContent='';
+      const submitBtn = projectForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn?.innerHTML;
+      
       try{
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creando...';
+        }
+        
         const progressValue = document.getElementById('projProgress').value;
+        const startDateValue = document.getElementById('projStart').value;
+        const endDateValue = document.getElementById('projEnd').value;
+        
         const body = {
           name: document.getElementById('projName').value.trim(),
           status: 'planned',
-          startDate: document.getElementById('projStart').value || undefined,
-          endDate: document.getElementById('projEnd').value || undefined,
-          progress: progressValue ? parseInt(progressValue) : 0
+          startDate: startDateValue ? new Date(startDateValue).toISOString() : undefined,
+          endDate: endDateValue ? new Date(endDateValue).toISOString() : undefined,
+          progress: progressValue ? parseInt(progressValue) : 0,
+          priority: 'medium'
         };
+        
         if (!body.name) throw new Error('Nombre requerido');
-        await fetchJSON('/crm/projects', { 
+        
+        const response = await fetch('/crm/projects', { 
           method:'POST', 
           headers:{
             'Content-Type':'application/json',
@@ -344,12 +373,156 @@
           }, 
           body: JSON.stringify(body) 
         });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+          throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
         projectForm.reset();
         document.getElementById('projProgress').value = '0';
+        projMsg.textContent = '✅ Proyecto creado exitosamente';
+        projMsg.className = 'text-sm text-green-600 h-5 mt-2';
+        
         await loadProjectsForGantt();
-        await loadTasksList(projectSelect?.value);
-      }catch(err){ projMsg.textContent = 'Error al crear proyecto: ' + (err.message||''); }
+        if (projectSelect?.value) {
+          await loadTasksList(projectSelect.value);
+        }
+        
+        setTimeout(() => {
+          projMsg.textContent = '';
+          projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+        }, 3000);
+      }catch(err){ 
+        console.error('Error creating project:', err);
+        projMsg.textContent = '❌ Error al crear proyecto: ' + (err.message||'Error desconocido'); 
+        projMsg.className = 'text-sm text-red-600 h-5 mt-2';
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          if (originalText) submitBtn.innerHTML = originalText;
+        }
+      }
     });
+
+    // Función para marcar/desmarcar tarea como completada
+    window.toggleTaskComplete = async function(taskId, isComplete) {
+      try {
+        const checkbox = document.getElementById(`task-checkbox-${taskId}`);
+        if (checkbox) checkbox.disabled = true;
+        
+        const task = currentTasks.find(t => t._id === taskId);
+        if (!task) {
+          alert('Tarea no encontrada');
+          if (checkbox) checkbox.disabled = false;
+          return;
+        }
+        
+        const newStatus = isComplete ? 'done' : 'todo';
+        const newProgress = isComplete ? 100 : 0;
+        
+        const response = await fetch(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...task,
+            status: newStatus,
+            progress: newProgress
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+          throw new Error(errorData.error || 'Error al actualizar tarea');
+        }
+        
+        // Actualizar la lista de tareas
+        await loadTasksList(projectSelect.value);
+        await renderGantt(projectSelect.value);
+        
+        // Recalcular progreso del proyecto
+        await updateProjectProgress();
+        
+      } catch (error) {
+        console.error('Error toggling task:', error);
+        alert('Error al actualizar tarea: ' + error.message);
+        // Revertir checkbox
+        const checkbox = document.getElementById(`task-checkbox-${taskId}`);
+        if (checkbox) {
+          checkbox.checked = !isComplete;
+          checkbox.disabled = false;
+        }
+      }
+    };
+    
+    // Función para recalcular y actualizar el progreso del proyecto basado en las tareas
+    async function updateProjectProgress() {
+      try {
+        const projectId = projectSelect?.value;
+        if (!projectId) return;
+        
+        const tasks = await fetchJSON(`/crm/projects/${projectId}/tasks`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (tasks.length === 0) {
+          // Sin tareas, progreso es 0
+          await fetch(`/crm/projects/${projectId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ progress: 0 })
+          });
+          return;
+        }
+        
+        // Calcular progreso promedio de las tareas
+        const totalProgress = tasks.reduce((sum, t) => sum + (t.progress || 0), 0);
+        const averageProgress = Math.round(totalProgress / tasks.length);
+        
+        // Contar tareas completadas
+        const completedTasks = tasks.filter(t => t.status === 'done').length;
+        const totalTasks = tasks.length;
+        const completionPercentage = Math.round((completedTasks / totalTasks) * 100);
+        
+        // Usar el promedio entre progreso promedio y porcentaje de completadas
+        const finalProgress = Math.round((averageProgress + completionPercentage) / 2);
+        
+        // Determinar estado del proyecto
+        let newStatus = 'planned';
+        if (completedTasks === totalTasks) {
+          newStatus = 'done';
+        } else if (completedTasks > 0) {
+          newStatus = 'in_progress';
+        }
+        
+        // Actualizar proyecto
+        await fetch(`/crm/projects/${projectId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            progress: finalProgress,
+            status: newStatus
+          })
+        });
+        
+        // Actualizar el selector de proyectos para reflejar el nuevo progreso
+        await loadProjectsForGantt();
+        
+      } catch (error) {
+        console.error('Error updating project progress:', error);
+      }
+    }
 
     // Funciones globales para editar/eliminar tareas
     window.openTaskEditModal = async function(taskId) {
@@ -388,6 +561,8 @@
           });
           closeTaskEditModal();
           await renderGantt(projectSelect.value);
+          await loadTasksList(projectSelect.value);
+          await updateProjectProgress();
         } catch(err) {
           alert('Error al eliminar: ' + (err.message || ''));
         }
@@ -397,8 +572,13 @@
     window.deleteTask = async function(taskId) {
       if (!taskId || !confirm('¿Estás seguro de eliminar esta tarea?')) return;
       try {
-        await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { method: 'DELETE' });
+        await fetchJSON(`/crm/projects/${projectSelect.value}/tasks/${taskId}`, { 
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         await renderGantt(projectSelect.value);
+        await loadTasksList(projectSelect.value);
+        await updateProjectProgress();
       } catch(err) {
         alert('Error al eliminar: ' + (err.message || ''));
       }
@@ -430,6 +610,8 @@
         });
         closeTaskEditModal();
         await renderGantt(projectSelect.value);
+        await loadTasksList(projectSelect.value);
+        await updateProjectProgress();
       } catch(err) {
         alert('Error al actualizar: ' + (err.message || ''));
       }
@@ -458,6 +640,10 @@
       <a href="#" data-section="tickets" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
         <i class="fas fa-ticket-alt w-5"></i>
         <span>Tickets</span>
+      </a>
+      <a href="#" data-section="rh-requests" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+        <i class="fas fa-user-plus w-5"></i>
+        <span>Solicitudes RH</span>
       </a>
       <a href="#" data-section="projects" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition">
         <i class="fas fa-project-diagram w-5"></i>
@@ -688,6 +874,102 @@
             <!-- Tickets will be loaded here -->
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- RH Requests Section -->
+    <div id="rh-requests-section" class="section-content hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Solicitudes de Usuario (RH)</h2>
+      </div>
+      
+      <!-- Filters -->
+      <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <select id="rh-filter-status" class="border border-gray-300 rounded-lg px-4 py-2">
+            <option value="">Todos los estados</option>
+            <option value="pending">Pendiente</option>
+            <option value="in_progress">En Progreso</option>
+            <option value="completed">Completada</option>
+            <option value="cancelled">Cancelada</option>
+          </select>
+          
+          <select id="rh-filter-type" class="border border-gray-300 rounded-lg px-4 py-2">
+            <option value="">Tipo de solicitud</option>
+            <option value="alta">Alta</option>
+            <option value="baja">Baja</option>
+          </select>
+          
+          <select id="rh-filter-role" class="border border-gray-300 rounded-lg px-4 py-2">
+            <option value="">Todos los roles</option>
+            <option value="cajero">Cajero</option>
+            <option value="lider_piso">Líder de Piso</option>
+            <option value="sublider_piso">Sub-líder de Piso</option>
+            <option value="cocina">Cocina</option>
+            <option value="gerente">Gerente</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="otro">Otro</option>
+          </select>
+          
+          <button onclick="applyRHFilters()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+            <i class="fas fa-filter mr-2"></i>Filtrar
+          </button>
+        </div>
+      </div>
+      
+      <!-- Requests Table -->
+      <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empleado</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plataforma</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Solicitado Por</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="rh-requests-table" class="divide-y divide-gray-200">
+            <!-- Requests will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RH Request Detail Modal -->
+    <div id="rh-request-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white rounded-lg w-full max-w-2xl p-6 m-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-gray-800">Detalles de Solicitud</h3>
+          <button onclick="closeRHRequestModal()" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <div id="rh-request-details" class="space-y-4">
+          <!-- Details will be loaded here -->
+        </div>
+        
+        <div class="mt-6 border-t pt-4">
+          <h4 class="font-semibold text-gray-700 mb-3">Procesar Solicitud</h4>
+          <div class="space-y-3">
+            <textarea id="rh-completion-notes" class="w-full border rounded px-3 py-2" rows="3" placeholder="Notas de procesamiento (opcional)"></textarea>
+            <div class="flex gap-2">
+              <button onclick="processRHRequest('in_progress')" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded">
+                <i class="fas fa-clock mr-2"></i>En Progreso
+              </button>
+              <button onclick="processRHRequest('completed')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                <i class="fas fa-check mr-2"></i>Completar
+              </button>
+              <button onclick="processRHRequest('cancelled')" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                <i class="fas fa-times mr-2"></i>Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1189,6 +1471,7 @@
       document.getElementById(section + '-section').classList.remove('hidden');
       if (section === 'dashboard') loadDashboard();
       if (section === 'tickets') loadTickets();
+      if (section === 'rh-requests') loadRHRequests();
       if (section === 'projects') {
         loadProjects(); // Cargar proyectos en cards
         loadProjectsForGantt(); // Cargar proyectos en Gantt
@@ -2812,6 +3095,283 @@
       } catch (error) {
         console.error('Error reconnecting WhatsApp:', error);
         alert('Error al desconectar WhatsApp. Por favor, reinicia el servidor manualmente.');
+      }
+    }
+
+    // ============ RH REQUESTS FUNCTIONS ============
+    let currentRHRequestId = null;
+
+    async function loadRHRequests(filters = {}) {
+      try {
+        let url = '/crm/rh/requests/users?';
+        if (filters.status) url += `status=${filters.status}&`;
+        if (filters.type) url += `type=${filters.type}&`;
+        if (filters.userRole) url += `userRole=${filters.userRole}&`;
+        
+        const response = await fetch(apiUrl(url), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (handleAuthError(response)) return;
+        
+        const data = await response.json();
+        const requests = data.data || data;
+        
+        const nombresRoles = {
+          'cajero': 'Cajero',
+          'lider_piso': 'Líder de Piso',
+          'sublider_piso': 'Sub-líder de Piso',
+          'cocina': 'Cocina',
+          'gerente': 'Gerente',
+          'supervisor': 'Supervisor',
+          'otro': 'Otro'
+        };
+        
+        const estadosEmoji = {
+          'pending': '⏳',
+          'in_progress': '🔄',
+          'completed': '✅',
+          'cancelled': '❌'
+        };
+        
+        const estadosNombre = {
+          'pending': 'Pendiente',
+          'in_progress': 'En Progreso',
+          'completed': 'Completada',
+          'cancelled': 'Cancelada'
+        };
+        
+        const estadosColor = {
+          'pending': 'bg-yellow-100 text-yellow-800',
+          'in_progress': 'bg-blue-100 text-blue-800',
+          'completed': 'bg-green-100 text-green-800',
+          'cancelled': 'bg-red-100 text-red-800'
+        };
+        
+        const tbody = document.getElementById('rh-requests-table');
+        if (requests.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">No hay solicitudes</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = requests.map(req => {
+          const fecha = new Date(req.createdAt).toLocaleDateString('es-MX');
+          const emoji = req.type === 'alta' ? '➕' : '➖';
+          const tipoTexto = req.type === 'alta' ? 'Alta' : 'Baja';
+          
+          return `
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                ${emoji} ${tipoTexto}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-900">${req.entityName || req.employeeName || '-'}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                ${req.userRole ? nombresRoles[req.userRole] || req.userRole : '-'}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600">${req.platform || '-'}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <span class="px-2 py-1 rounded-full text-xs font-medium ${estadosColor[req.status] || 'bg-gray-100 text-gray-800'}">
+                  ${estadosEmoji[req.status] || '📋'} ${estadosNombre[req.status] || req.status}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600">${req.requestedBy || '-'}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${fecha}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <button onclick="openRHRequestModal('${req._id}')" class="text-blue-600 hover:text-blue-800 mr-2" title="Ver detalles">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading RH requests:', error);
+        const tbody = document.getElementById('rh-requests-table');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-red-500">Error al cargar solicitudes</td></tr>';
+      }
+    }
+
+    function applyRHFilters() {
+      const filters = {
+        status: document.getElementById('rh-filter-status')?.value || '',
+        type: document.getElementById('rh-filter-type')?.value || '',
+        userRole: document.getElementById('rh-filter-role')?.value || ''
+      };
+      loadRHRequests(filters);
+    }
+
+    async function openRHRequestModal(requestId) {
+      try {
+        currentRHRequestId = requestId;
+        const response = await fetch(apiUrl(`/crm/rh/requests`), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (handleAuthError(response)) return;
+        
+        const allRequests = await response.json();
+        const request = allRequests.find(r => r._id === requestId);
+        
+        if (!request) {
+          alert('Solicitud no encontrada');
+          return;
+        }
+        
+        const nombresRoles = {
+          'cajero': 'Cajero',
+          'lider_piso': 'Líder de Piso',
+          'sublider_piso': 'Sub-líder de Piso',
+          'cocina': 'Cocina',
+          'gerente': 'Gerente',
+          'supervisor': 'Supervisor',
+          'otro': 'Otro'
+        };
+        
+        const estadosNombre = {
+          'pending': 'Pendiente',
+          'in_progress': 'En Progreso',
+          'completed': 'Completada',
+          'cancelled': 'Cancelada'
+        };
+        
+        const fechaCreacion = new Date(request.createdAt).toLocaleDateString('es-MX', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        const fechaProcesado = request.processedAt ? new Date(request.processedAt).toLocaleDateString('es-MX', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : '-';
+        
+        const emoji = request.type === 'alta' ? '➕' : '➖';
+        const tipoTexto = request.type === 'alta' ? 'Alta' : 'Baja';
+        
+        const details = document.getElementById('rh-request-details');
+        details.innerHTML = `
+          <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Tipo de Solicitud</p>
+                <p class="font-semibold text-gray-800">${emoji} ${tipoTexto}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Estado</p>
+                <p class="font-semibold text-gray-800">${estadosNombre[request.status] || request.status}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Empleado</p>
+                <p class="font-semibold text-gray-800">${request.entityName || request.employeeName || '-'}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Rol</p>
+                <p class="font-semibold text-gray-800">${request.userRole ? nombresRoles[request.userRole] || request.userRole : '-'}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Plataforma</p>
+                <p class="font-semibold text-gray-800">${request.platform || '-'}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Solicitado Por</p>
+                <p class="font-semibold text-gray-800">${request.requestedBy || '-'}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Fecha de Solicitud</p>
+                <p class="font-semibold text-gray-800">${fechaCreacion}</p>
+              </div>
+              ${request.processedAt ? `
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Fecha de Procesamiento</p>
+                <p class="font-semibold text-gray-800">${fechaProcesado}</p>
+              </div>
+              ` : ''}
+            </div>
+            ${request.notes ? `
+            <div>
+              <p class="text-xs text-gray-500 mb-1">Notas de Solicitud</p>
+              <p class="text-sm text-gray-700 bg-white p-2 rounded">${request.notes}</p>
+            </div>
+            ` : ''}
+            ${request.completionNotes ? `
+            <div>
+              <p class="text-xs text-gray-500 mb-1">Notas de Procesamiento</p>
+              <p class="text-sm text-gray-700 bg-white p-2 rounded">${request.completionNotes}</p>
+            </div>
+            ` : ''}
+          </div>
+        `;
+        
+        const modal = document.getElementById('rh-request-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Limpiar campo de notas
+        const notesField = document.getElementById('rh-completion-notes');
+        if (notesField) notesField.value = request.completionNotes || '';
+        
+      } catch (error) {
+        console.error('Error opening RH request modal:', error);
+        alert('Error al cargar detalles de la solicitud');
+      }
+    }
+
+    function closeRHRequestModal() {
+      const modal = document.getElementById('rh-request-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      currentRHRequestId = null;
+      const notesField = document.getElementById('rh-completion-notes');
+      if (notesField) notesField.value = '';
+    }
+
+    async function processRHRequest(newStatus) {
+      if (!currentRHRequestId) return;
+      
+      try {
+        const notesField = document.getElementById('rh-completion-notes');
+        const completionNotes = notesField ? notesField.value.trim() : '';
+        
+        const response = await fetch(apiUrl(`/crm/rh/requests/${currentRHRequestId}/status`), {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            status: newStatus,
+            completionNotes: completionNotes || undefined
+          })
+        });
+        
+        if (handleAuthError(response)) return;
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          const statusText = {
+            'completed': 'completada',
+            'in_progress': 'en progreso',
+            'cancelled': 'cancelada'
+          };
+          alert(`✅ Solicitud ${statusText[newStatus] || newStatus} exitosamente`);
+          closeRHRequestModal();
+          loadRHRequests();
+        } else {
+          alert(`❌ Error: ${data.error || 'Error desconocido'}`);
+        }
+      } catch (error) {
+        console.error('Error processing RH request:', error);
+        alert('❌ Error al procesar solicitud');
       }
     }
   </script>

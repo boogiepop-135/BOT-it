@@ -25,6 +25,23 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
     }
 });
 
+router.put('/projects/:projectId', authenticate, authorizePermission('projects','write'), async (req, res) => {
+    try {
+        const project = await Project.findByIdAndUpdate(
+            req.params.projectId,
+            req.body,
+            { new: true, runValidators: true }
+        ).lean().exec();
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        res.json(project);
+    } catch (e:any) {
+        logger.error('Update project failed', e);
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // Tasks
 router.get('/projects/:projectId/tasks', authenticate, authorizePermission('tasks','read'), async (req, res) => {
     const tasks = await Task.find({ projectId: req.params.projectId }).sort({ startDate: 1 }).lean().exec();

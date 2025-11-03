@@ -32,7 +32,23 @@ export const authorizeAdmin = (req: Request, res: Response, next: NextFunction) 
 
 export const authorizeRoles = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    const userRole = req.user.role;
+    
+    // Verificar si el usuario tiene uno de los roles permitidos
+    // También verificar roles de contactos (rh_karina, rh_nubia, etc.)
+    const hasPermission = roles.includes(userRole) || 
+                         roles.includes('*') || 
+                         userRole === 'admin' || 
+                         userRole === 'ceo' ||
+                         // Verificar si es un rol de contacto compatible
+                         (roles.includes('rh_karina') && userRole === 'rh_karina') ||
+                         (roles.includes('rh_nubia') && userRole === 'rh_nubia');
+    
+    if (!hasPermission) {
       return res.status(403).json({ error: 'Insufficient role' });
     }
     next();

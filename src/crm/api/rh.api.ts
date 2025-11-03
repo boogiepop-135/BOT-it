@@ -19,25 +19,101 @@ router.get('/requests', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADM
     }
 });
 
-router.post('/requests', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADMIN, ROLES.CEO), async (req, res) => {
+router.post('/requests', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADMIN, ROLES.CEO, 'rh_karina', 'rh_nubia'), async (req, res) => {
     try {
-        const doc = new RequestModel({ ...req.body, requestedBy: req.user.username || req.user.userId });
+        const { type, entityType, entityName, userRole, platform, employeeName, employeePhone, employeeEmail, reason, notes } = req.body;
+        
+        if (!type || !entityName) {
+            return res.status(400).json({ error: 'Missing required fields: type, entityName' });
+        }
+        
+        const doc = new RequestModel({ 
+            type,
+            entityType: entityType || 'usuario',
+            entityName,
+            userRole,
+            platform,
+            employeeName,
+            employeePhone,
+            employeeEmail,
+            reason,
+            notes,
+            status: 'pending',
+            requestedBy: req.user.username || req.user.userId || req.body.requestedBy || 'unknown'
+        });
         await doc.save();
         res.status(201).json(doc);
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Failed to create request:', error);
-        res.status(500).json({ error: 'Failed to create request' });
+        res.status(500).json({ error: error.message || 'Failed to create request' });
     }
 });
 
-router.patch('/requests/:id/status', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADMIN, ROLES.CEO), async (req, res) => {
+router.patch('/requests/:id/status', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADMIN, ROLES.CEO, ROLES.IT, 'rh_karina', 'rh_nubia'), async (req, res) => {
     try {
-        const doc = await RequestAny.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true, lean: true }).exec();
+        const { status, completionNotes } = req.body;
+        
+        const updateData: any = { status };
+        
+        if (status === 'completed' || status === 'in_progress') {
+            updateData.processedBy = req.user.userId;
+            updateData.processedAt = new Date();
+        }
+        
+        if (completionNotes) {
+            updateData.completionNotes = completionNotes;
+        }
+        
+        const doc = await RequestAny.findByIdAndUpdate(req.params.id, updateData, { new: true, lean: true }).exec();
         if (!doc) return res.status(404).json({ error: 'Not found' });
         res.json(doc);
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Failed to update request status:', error);
-        res.status(500).json({ error: 'Failed to update request status' });
+        res.status(500).json({ error: error.message || 'Failed to update request status' });
+    }
+});
+
+// Obtener solicitudes de usuario (alta/baja) - IT puede ver y procesar
+router.get('/requests/users', authenticate, authorizeRoles(ROLES.RH_COMPRAS, ROLES.ADMIN, ROLES.CEO, ROLES.IT, 'rh_karina', 'rh_nubia'), async (req, res) => {
+    try {
+        const { status, type, userRole, page = 1, limit = 20 } = req.query;
+        
+        const query: any = { entityType: 'usuario' };
+        
+        if (status) {
+            query.status = status;
+        }
+        
+        if (type) {
+            query.type = type;
+        }
+        
+        if (userRole) {
+            query.userRole = userRole;
+        }
+        
+        const skip = (Number(page) - 1) * Number(limit);
+        
+        const requests = await RequestAny.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit))
+            .lean();
+        
+        const total = await RequestAny.countDocuments(query);
+        
+        res.json({
+            data: requests,
+            meta: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                pages: Math.ceil(total / Number(limit))
+            }
+        });
+    } catch (error: any) {
+        logger.error('Failed to get user requests:', error);
+        res.status(500).json({ error: error.message || 'Failed to get user requests' });
     }
 });
 

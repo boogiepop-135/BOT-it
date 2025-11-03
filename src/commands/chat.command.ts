@@ -89,6 +89,34 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         return;
     }
     
+    // Detectar si el usuario es RH (Karina/Nubia) para solicitudes de usuarios
+    try {
+        const contact = await message.getContact();
+        const { getBossInfo } = await import('../utils/report-generator.util');
+        const bossInfo = getBossInfo(contact.number);
+        const isRH = bossInfo?.role === 'rh_karina' || bossInfo?.role === 'rh_nubia';
+        
+        if (isRH) {
+            const rhKeywords = [
+                'alta', 'baja', 'crear usuario', 'eliminar usuario',
+                'dar de alta', 'dar de baja', 'agregar usuario', 'quitar usuario',
+                'solicitud', 'solicitudes', 'ver solicitudes', 'mis solicitudes',
+                'usuario cajero', 'usuario líder', 'usuario cocina'
+            ];
+            
+            const esRHRequest = rhKeywords.some(keyword => cleanQuery.includes(keyword));
+            
+            if (esRHRequest) {
+                logger.info(`RH request intent detected: ${cleanQuery}`);
+                const { run: runRH } = await import('./rh.command');
+                await runRH(message, args, userI18n);
+                return;
+            }
+        }
+    } catch (error) {
+        // Ignorar errores de detección
+    }
+    
     // Detectar si el usuario es un jefe (Salma/Francisco) para mostrar menú personalizado
     let isBossUser = false;
     let bossUserName = '';
