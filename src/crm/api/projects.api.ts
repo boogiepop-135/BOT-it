@@ -10,27 +10,40 @@ const router = express.Router();
 const Project: any = ProjectModel as any;
 const Task: any = TaskModel as any;
 router.get('/projects', authenticate, authorizePermission('projects','read'), async (_req, res) => {
-    const projects = await Project.find({}).sort({ createdAt: -1 }).lean().exec();
-    res.json(projects);
+    try {
+        logger.info('GET /projects - Fetching all projects');
+        const projects = await Project.find({}).sort({ createdAt: -1 }).lean().exec();
+        logger.info(`GET /projects - Found ${projects.length} projects`);
+        res.json(projects);
+    } catch (e:any) {
+        logger.error('GET /projects - Error:', e);
+        res.status(500).json({ error: e.message || 'Error al obtener proyectos' });
+    }
 });
 
 router.post('/projects', authenticate, authorizePermission('projects','write'), async (req, res) => {
     try {
+        logger.info('POST /projects - Received request body:', JSON.stringify(req.body));
+        logger.info('POST /projects - User:', req.user);
+        
         const body: any = {};
         
         // Copiar campos requeridos
         if (req.body.name) {
             body.name = req.body.name.trim();
         } else {
+            logger.error('POST /projects - Missing name field');
             return res.status(400).json({ error: 'El nombre del proyecto es requerido' });
         }
         
         // Copiar campos opcionales solo si existen
         if (req.body.startDate) {
             body.startDate = new Date(req.body.startDate);
+            logger.info('POST /projects - Parsed startDate:', body.startDate);
         }
         if (req.body.endDate) {
             body.endDate = new Date(req.body.endDate);
+            logger.info('POST /projects - Parsed endDate:', body.endDate);
         }
         if (req.body.progress !== undefined) {
             body.progress = Number(req.body.progress) || 0;
@@ -57,14 +70,27 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
             body.status = req.body.status;
         }
         
-        logger.info('Creating project with body:', JSON.stringify(body));
+        logger.info('Creating project with body:', JSON.stringify(body, null, 2));
         
         const p = new ProjectModel(body);
+        logger.info('ProjectModel instance created, saving...');
+        
         const saved = await p.save();
-        logger.info('Project created successfully:', saved._id);
-        res.status(201).json(saved);
+        logger.info('✅ Project created successfully!');
+        logger.info('   - ID:', saved._id);
+        logger.info('   - Name:', saved.name);
+        logger.info('   - Status:', saved.status);
+        logger.info('   - Progress:', saved.progress);
+        
+        // Convertir a objeto plano para respuesta JSON
+        const savedObj = saved.toObject ? saved.toObject() : saved;
+        res.status(201).json(savedObj);
     } catch (e:any) {
-        logger.error('Create project failed', e);
+        logger.error('❌ Create project failed');
+        logger.error('   - Error name:', e.name);
+        logger.error('   - Error message:', e.message);
+        logger.error('   - Error stack:', e.stack);
+        logger.error('   - Full error:', JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
         res.status(400).json({ error: e.message || 'Error al crear proyecto' });
     }
 });
