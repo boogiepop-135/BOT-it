@@ -37,9 +37,8 @@ export async function connectDB() {
       maxPoolSize: 10,
       retryWrites: true,
       w: 'majority',
-      // Auto-reconnect config
-      bufferMaxEntries: 0, // Disable mongoose buffering
-      bufferCommands: false, // Disable mongoose buffering
+      // Auto-reconnect config (opciones compatibles con mongoose 8.x)
+      // Nota: bufferMaxEntries y bufferCommands fueron removidos en mongoose 8.x
     };
     
     // Si Railway usa autenticación, agregar opciones adicionales
