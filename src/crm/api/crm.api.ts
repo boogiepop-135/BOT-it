@@ -536,7 +536,7 @@ export default function (botManager: BotManager) {
     });
 
   // Sub-routers CRM
-  router.use('/', projectsApi);
+  router.use('/', projectsApi(botManager));
   // Completar proyecto y notificar
   router.post('/projects/:projectId/complete', authenticate, authorizeAdmin, async (req, res) => {
         try {

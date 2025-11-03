@@ -2,10 +2,13 @@ import express from 'express';
 import { authenticate, authorizePermission } from '../middlewares/auth.middleware';
 import { ProjectModel } from '../models/project.model';
 import { TaskModel } from '../models/task.model';
+import { BotManager } from '../../bot.manager';
+import { ContactModel } from '../models/contact.model';
 import logger from '../../configs/logger.config';
 
 const router = express.Router();
 
+export default function (botManager: BotManager) {
 // Projects
 const Project: any = ProjectModel as any;
 const Task: any = TaskModel as any;
@@ -54,6 +57,12 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
             body.priority = req.body.priority;
         } else {
             body.priority = 'medium';
+        }
+        if (req.body.url) {
+            body.url = req.body.url.trim();
+        }
+        if (req.body.fileUrl) {
+            body.fileUrl = req.body.fileUrl.trim();
         }
         
         // Si no hay fecha de inicio o fin, establecer status como 'planned' (por plantear)
@@ -104,6 +113,42 @@ router.post('/projects', authenticate, authorizePermission('projects','write'), 
             } catch (syncError: any) {
                 // No fallar la request si la sincronización falla (es opcional)
                 logger.warn('Auto-sync failed after project creation (optional):', syncError.message);
+            }
+            
+            // Notificar a roles específicos sobre el nuevo proyecto
+            try {
+                const rolesToNotify = ['salma', 'francisco', 'desarrollo_estrategia_inrra'];
+                const contactsToNotify = await ContactModel.find({ role: { $in: rolesToNotify } });
+
+                let notificationMessage = `📋 *Nuevo Proyecto Creado: ${saved.name}*\n\n`;
+                notificationMessage += `*Detalles:*\n`;
+                notificationMessage += `• Estado: ${saved.status === 'planned' ? 'Por Plantear' : saved.status === 'in_progress' ? 'En Progreso' : saved.status}\n`;
+                if (saved.startDate) {
+                    notificationMessage += `• Fecha de inicio: ${new Date(saved.startDate).toLocaleDateString('es-MX')}\n`;
+                }
+                if (saved.endDate) {
+                    notificationMessage += `• Fecha de fin: ${new Date(saved.endDate).toLocaleDateString('es-MX')}\n`;
+                }
+                if (saved.progress !== undefined) {
+                    notificationMessage += `• Progreso: ${saved.progress}%\n`;
+                }
+                if (saved.url) {
+                    notificationMessage += `\n🔗 *URL del proyecto:*\n${saved.url}\n`;
+                }
+                if (saved.fileUrl) {
+                    notificationMessage += `\n📎 *Archivo adjunto:*\n${saved.fileUrl}\n`;
+                }
+                notificationMessage += `\n¡Éxito en el desarrollo del proyecto!`;
+
+                for (const contact of contactsToNotify) {
+                    if (contact.phoneNumber) {
+                        await botManager.sendMessageToUser(contact.phoneNumber, notificationMessage);
+                        logger.info(`Notificación de proyecto creado enviada a ${contact.name || contact.phoneNumber}`);
+                    }
+                }
+            } catch (notifyError: any) {
+                // No fallar la request si la notificación falla (es opcional)
+                logger.warn('Notification failed after project creation (optional):', notifyError.message);
             }
             
             res.status(201).json(savedObj);
@@ -262,6 +307,7 @@ router.delete('/projects/:projectId/tasks/:taskId', authenticate, authorizePermi
     }
 });
 
-export default router;
+  return router;
+}
 
 

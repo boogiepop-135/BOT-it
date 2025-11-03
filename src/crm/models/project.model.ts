@@ -11,6 +11,8 @@ export interface IProject extends Document {
 	progress?: number; // 0..100
 	budget?: number;
 	tags?: string[];
+	url?: string; // URL del proyecto (Drive, Dropbox, etc.)
+	fileUrl?: string; // URL de archivo asociado (PDF, PNG, etc.)
 }
 
 const ProjectSchema = new Schema<IProject>({
@@ -23,7 +25,9 @@ const ProjectSchema = new Schema<IProject>({
 	endDate: Date,
 	progress: { type: Number, default: 0, min: 0, max: 100 },
 	budget: Number,
-	tags: [String]
+	tags: [String],
+	url: String,
+	fileUrl: String
 }, { 
 	timestamps: true,
 	collection: 'projects' // Especificar explícitamente el nombre de la colección
