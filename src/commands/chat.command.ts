@@ -512,6 +512,19 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             return;
         }
         
+        // Respuesta minimal por rol RH
+        if ((userRole || '').toLowerCase().startsWith('rh')) {
+            const firstName = userName ? userName.split(' ')[0] : '';
+            await message.reply(
+                `${firstName ? '👋 ¡Hola ' + firstName + '!' : '👋 ¡Hola!'}\n\n` +
+                `Comandos RH rápidos:\n` +
+                `• Ticket: \`!ticket\`\n` +
+                `• Alta usuario: \`!rh alta [nombre] [correo]\`\n` +
+                `• Baja usuario: \`!rh baja [correo]\``
+            );
+            return;
+        }
+
         if (userRole === 'ceo') {
             greeting = '👔 Buenos días, estimado';
             welcomeMsg = '¡Bienvenido al Sistema de Soporte IT! 🤩\n\nComo CEO, tiene acceso prioritario a nuestros servicios.';
