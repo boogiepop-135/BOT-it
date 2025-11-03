@@ -33,8 +33,8 @@
 </head>
 <body class="bg-gray-50">
   <script>
-    // API Base URL Configuration
-    const API_BASE_URL = 'https://bot-it-production.up.railway.app';
+    // API Base URL Configuration (editable por UI y guardado en localStorage)
+    const API_BASE_URL = (localStorage.getItem('apiBaseUrl') || 'https://bot-it-production.up.railway.app');
     
     // Helper para construir URLs de API
     function apiUrl(path) {
@@ -971,7 +971,10 @@
   <!-- Google Sheets Panel -->
   <section class="max-w-6xl mx-auto mt-10">
     <div class="bg-white shadow rounded-lg p-6">
-      <h2 class="text-xl font-semibold mb-4">Integraciones con Google Sheets</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Integraciones con Google Sheets</h2>
+        <button id="gs-open-settings" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded"><i class="fas fa-cog mr-1"></i> Configurar</button>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         <div class="md:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">URL o ID de Spreadsheet</label>
@@ -991,6 +994,36 @@
     </div>
   </section>
 
+  <!-- Drawer lateral de configuración -->
+  <aside id="settings-drawer" class="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-200 z-50">
+    <div class="p-5 border-b flex items-center justify-between">
+      <h3 class="text-lg font-semibold">Configuración</h3>
+      <button id="gs-close-settings" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5 space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">API Base URL</label>
+        <input id="cfg-api" type="text" class="w-full border rounded px-3 py-2" placeholder="https://mi-api" />
+        <p class="text-xs text-gray-500 mt-1">Se usa para todas las llamadas del panel. Se guarda en este navegador.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">URL/ID de Google Sheets por defecto</label>
+        <input id="cfg-sheet" type="text" class="w-full border rounded px-3 py-2" placeholder="https://docs.google.com/spreadsheets/d/ID/edit" />
+        <p class="text-xs text-gray-500 mt-1">Se precarga en el campo de conexión.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Colección por defecto</label>
+        <select id="cfg-collection" class="w-full border rounded px-2 py-2"></select>
+        <p class="text-xs text-gray-500 mt-1">Se sugiere al mapear hojas.</p>
+      </div>
+      <div class="flex gap-3">
+        <button id="cfg-save" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Guardar</button>
+        <button id="cfg-reset" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded">Restablecer</button>
+      </div>
+      <p id="cfg-msg" class="text-sm text-gray-600"></p>
+    </div>
+  </aside>
+
   <script>
     (function initSheetsPanel(){
       const msg = document.getElementById('gs-msg');
@@ -998,6 +1031,15 @@
       const urlInput = document.getElementById('gs-url');
       const btn = document.getElementById('gs-connect');
       const panel = document.querySelector('section .bg-white.shadow');
+      const openSettings = document.getElementById('gs-open-settings');
+      const closeSettings = document.getElementById('gs-close-settings');
+      const drawer = document.getElementById('settings-drawer');
+      const cfgApi = document.getElementById('cfg-api');
+      const cfgSheet = document.getElementById('cfg-sheet');
+      const cfgCol = document.getElementById('cfg-collection');
+      const cfgSave = document.getElementById('cfg-save');
+      const cfgReset = document.getElementById('cfg-reset');
+      const cfgMsg = document.getElementById('cfg-msg');
 
       function setMsg(t, kind='info'){
         msg.textContent = t || '';
@@ -1021,6 +1063,12 @@
           console.error(e); return [];
         }
       }
+
+      // Prefill desde configuración guardada
+      try {
+        const storedSheet = localStorage.getItem('defaultSheetUrl') || '';
+        if (storedSheet) urlInput.value = storedSheet;
+      } catch(_e) {}
 
       let rendering = false;
       async function renderList(){
@@ -1136,6 +1184,46 @@
         // Fallback si IO no está disponible
         renderList();
       }
+
+      // ----- Drawer settings -----
+      function toggleDrawer(open){
+        drawer.style.transform = open ? 'translateX(0)' : 'translateX(100%)';
+      }
+      openSettings.addEventListener('click', async () => {
+        // Cargar valores actuales
+        cfgApi.value = (localStorage.getItem('apiBaseUrl') || API_BASE_URL || '');
+        cfgSheet.value = (localStorage.getItem('defaultSheetUrl') || urlInput.value || '');
+        // Cargar colecciones
+        const cols = await loadCollections();
+        cfgCol.innerHTML = cols.map(c=>`<option value="${c}">${c}</option>`).join('');
+        const defCol = localStorage.getItem('defaultCollection');
+        if (defCol && cols.includes(defCol)) cfgCol.value = defCol;
+        toggleDrawer(true);
+      });
+      closeSettings.addEventListener('click', () => toggleDrawer(false));
+
+      cfgSave.addEventListener('click', () => {
+        try{
+          if (cfgApi.value) localStorage.setItem('apiBaseUrl', cfgApi.value.trim());
+          if (cfgSheet.value) localStorage.setItem('defaultSheetUrl', cfgSheet.value.trim());
+          if (cfgCol.value) localStorage.setItem('defaultCollection', cfgCol.value);
+          cfgMsg.textContent = 'Configuración guardada';
+          cfgMsg.className = 'text-sm text-green-600';
+        }catch(_e){
+          cfgMsg.textContent = 'No se pudo guardar la configuración';
+          cfgMsg.className = 'text-sm text-red-600';
+        }
+      });
+      cfgReset.addEventListener('click', () => {
+        localStorage.removeItem('apiBaseUrl');
+        localStorage.removeItem('defaultSheetUrl');
+        localStorage.removeItem('defaultCollection');
+        cfgApi.value = '';
+        cfgSheet.value = '';
+        cfgCol.value = '';
+        cfgMsg.textContent = 'Configuración restablecida';
+        cfgMsg.className = 'text-sm text-gray-600';
+      });
     })();
   </script>
   <!-- Sidebar -->
