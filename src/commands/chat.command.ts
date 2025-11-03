@@ -331,28 +331,54 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     }
     
     if (cleanQuery === '7' || cleanQuery === '7️⃣' || cleanQuery === 'ayuda' || cleanQuery === 'help' || cleanQuery === 'comandos') {
-        await message.reply(
-            `❓ *Comandos Disponibles*\n\n` +
-            `📝 **Crear Ticket:**\n` +
-            `\`!ticket\` o \`1\`\n\n` +
-            `📋 **Ver Mis Tickets:**\n` +
-            `\`!ticket list\` o \`2\`\n\n` +
-            `👁️ **Ver Detalles:**\n` +
-            `\`!ticket view TKT-000001\` o \`3\`\n\n` +
-            `💬 **Agregar Comentario:**\n` +
-            `\`!ticket comment TKT-000001 mensaje\` o \`4\`\n\n` +
-            `📞 **Contactar IT:**\n` +
-            `\`5\`\n\n` +
-            `ℹ️ **Información:**\n` +
-            `\`6\` - Servicios IT\n` +
-            `\`7\` - Esta ayuda\n\n` +
-            `⏸️ **Control Bot:**\n` +
-            `\`!stop\` - Pausar el bot\n` +
-            `\`!start\` - Reanudar el bot\n\n` +
-            `❌ **Cancelar:**\n` +
-            `\`cancel\``
-        );
-        return;
+        try {
+            const contact = await message.getContact();
+            const { ContactModel } = await import('../crm/models/contact.model');
+            const dbContact = await ContactModel.findOne({ phoneNumber: contact.number });
+            const role = (dbContact?.role || '').toLowerCase();
+
+            // RH: solo tickets y altas/bajas
+            if (role.startsWith('rh')) {
+                await message.reply(
+                    `❓ *Comandos RH*\n\n` +
+                    `📝 Ticket: \`!ticket\`\n` +
+                    `📋 Mis Tickets: \`!ticket list\`\n` +
+                    `➕ Alta de usuario: \`!rh alta [nombre] [correo]\`\n` +
+                    `➖ Baja de usuario: \`!rh baja [correo]\``
+                );
+                return;
+            }
+
+            // INRRA: solo ticket y ver proyectos
+            if (role.includes('inrra')) {
+                await message.reply(
+                    `❓ *Comandos Disponibles*\n\n` +
+                    `📝 Ticket: \`!ticket\`\n` +
+                    `📊 Ver proyectos: escribe "proyectos"`
+                );
+                return;
+            }
+
+            // Salma/Francisco/Directivos: evitar menú genérico; remitir al menú personalizado
+            if (role.includes('salma') || role.includes('francisco') || role.includes('ceo') || role.includes('boss') || role.includes('admin')) {
+                await message.reply(`ℹ️ Para tu rol dispones de un menú personalizado. Escribe "proyectos", "tareas", "reporte" o "tickets".`);
+                return;
+            }
+
+            // Resto: menú compacto
+            await message.reply(
+                `❓ *Comandos Disponibles*\n\n` +
+                `📝 Ticket: \`!ticket\` o \`1\`\n` +
+                `📋 Mis Tickets: \`!ticket list\` o \`2\`\n` +
+                `👁️ Ver Detalles: \`!ticket view TKT-000001\`\n` +
+                `💬 Comentar: \`!ticket comment TKT-000001 mensaje\``
+            );
+            return;
+        } catch {
+            // fallback clásico breve
+            await message.reply(`📝 Ticket: \`!ticket\`. \n📋 Mis Tickets: \`!ticket list\``);
+            return;
+        }
     }
     
     // Detectar si el mensaje es sobre IT y redirigir automáticamente
@@ -376,16 +402,22 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             const now = Date.now();
             // Cooldown de 3 minutos
             if (now - last > 3 * 60 * 1000) {
-                await message.reply(
-                    `🔧 *Soporte IT - San Cosme Orgánico*\n\n` +
-                    `Para crear un ticket de soporte técnico, simplemente escribe:\n\n` +
-                    `\`ticket\` o \`!ticket\`\n\n` +
-                    `O describe tu problema:\n` +
-                    `• "La impresora no funciona"\n` +
-                    `• "No puedo acceder al correo"\n` +
-                    `• "El POS se cayó"\n\n` +
-                    `Escribe \`!help\` para ver todos los comandos.`
-                );
+                // role-aware breve
+                const { ContactModel } = await import('../crm/models/contact.model');
+                const dbContact = await ContactModel.findOne({ phoneNumber: contact.number });
+                const role = (dbContact?.role || '').toLowerCase();
+
+                if (role.startsWith('rh')) {
+                    await message.reply(`📝 Ticket: \`!ticket\`. Altas: \`!rh alta\`. Bajas: \`!rh baja\`.`);
+                } else if (role.includes('inrra')) {
+                    await message.reply(`📝 Ticket: \`!ticket\`. Proyectos: escribe "proyectos".`);
+                } else if (role.includes('salma') || role.includes('francisco') || role.includes('ceo') || role.includes('boss') || role.includes('admin')) {
+                    // No enviar mensaje genérico a directivos
+                    // En su lugar, un recordatorio mínimo
+                    await message.reply(`Tienes menú personalizado: "proyectos", "tareas", "reporte", "tickets".`);
+                } else {
+                    await message.reply(`📝 Ticket: \`!ticket\`. 📋 Mis tickets: \`!ticket list\`.`);
+                }
                 lastHelpMap.set(contact.number, now);
                 return;
             }
