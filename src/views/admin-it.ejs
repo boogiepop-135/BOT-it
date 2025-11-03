@@ -454,6 +454,45 @@
     });
   }
     viewMode?.addEventListener('change', () => gantt?.change_view_mode(viewMode.value));
+  
+  // Delegación de eventos: asegura clicks incluso si los botones se renderizan después
+  document.addEventListener('click', async (e) => {
+    const target = e.target as any;
+    const deleteBtn = target && target.closest && target.closest('#deleteProjectBtn');
+    const completeBtn = target && target.closest && target.closest('#completeProjectBtn');
+    if (deleteBtn) {
+      const sel = document.getElementById('projectSelect');
+      const projectId = sel ? sel['value'] : null;
+      if (!projectId) return;
+      if (!confirm('¿Eliminar este proyecto y todas sus tareas?')) return;
+      try {
+        const resp = await fetch(`/crm/projects/${projectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) throw new Error(await resp.text());
+        await window.loadProjectsForGantt();
+        const el = document.getElementById('gantt'); if (el) el.innerHTML = '';
+        const placeholder = document.getElementById('ganttPlaceholder'); if (placeholder) placeholder.classList.remove('hidden');
+        document.getElementById('tasksSection')?.classList.add('hidden');
+      } catch (err) {
+        alert('Error eliminando proyecto');
+      }
+      return;
+    }
+    if (completeBtn) {
+      const sel = document.getElementById('projectSelect');
+      const projectId = sel ? sel['value'] : null;
+      if (!projectId) return;
+      if (!confirm('¿Marcar el proyecto como completado y notificar a dirección?')) return;
+      try {
+        const resp = await fetch(`/crm/projects/${projectId}/complete`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        if (!resp.ok) throw new Error(await resp.text());
+        await renderGantt(projectId);
+        alert('Proyecto completado y notificado.');
+      } catch (err) {
+        alert('Error completando el proyecto');
+      }
+      return;
+    }
+  });
     
     // Event listener para eliminar proyecto
     document.getElementById('deleteProjectBtn')?.addEventListener('click', async () => {
