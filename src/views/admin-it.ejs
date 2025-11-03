@@ -997,6 +997,7 @@
       const list = document.getElementById('gs-list');
       const urlInput = document.getElementById('gs-url');
       const btn = document.getElementById('gs-connect');
+      const panel = document.querySelector('section .bg-white.shadow');
 
       function setMsg(t, kind='info'){
         msg.textContent = t || '';
@@ -1009,16 +1010,22 @@
         return res.json();
       }
 
+      let collectionsCache = null;
       async function loadCollections(){
+        if (Array.isArray(collectionsCache)) return collectionsCache;
         try{
           const data = await fetchJSON('/crm/sheets/db/collections/list');
-          return data.collections || [];
+          collectionsCache = data.collections || [];
+          return collectionsCache;
         }catch(e){
           console.error(e); return [];
         }
       }
 
+      let rendering = false;
       async function renderList(){
+        if (rendering) return; // Evitar renders concurrentes
+        rendering = true;
         try{
           const resp = await fetchJSON('/crm/sheets');
           const items = resp.data || [];
@@ -1055,6 +1062,7 @@
             btn.addEventListener('click', async (e) => {
               const id = e.currentTarget.getAttribute('data-id');
               const block = document.getElementById('gs-block-'+id);
+              e.currentTarget.disabled = true;
               try{
                 const meta = await fetchJSON(`/crm/sheets/${id}/sheets`);
                 const sel = document.getElementById('gs-sheet-'+id);
@@ -1062,7 +1070,7 @@
                 block.classList.remove('hidden');
               }catch(err){
                 setMsg('No se pudieron cargar las hojas','error');
-              }
+              } finally { e.currentTarget.disabled = false; }
             })
           });
 
@@ -1072,6 +1080,7 @@
               const sheet = document.getElementById('gs-sheet-'+id)?.value;
               const col = document.getElementById('gs-col-'+id)?.value;
               if(!sheet || !col){ setMsg('Selecciona hoja y colección','error'); return; }
+              e.currentTarget.disabled = true;
               try{
                 await fetch(`/crm/sheets/${id}/map`,{
                   method:'POST',
@@ -1080,16 +1089,21 @@
                 });
                 setMsg('Mapeo guardado','success');
               }catch(err){ setMsg('Error guardando mapeo','error'); }
+              finally { e.currentTarget.disabled = false; }
             })
           });
         } catch (e){
           setMsg('Error cargando integraciones','error');
-        }
+        } finally { rendering = false; }
       }
 
+      let connectCooldown = false;
       btn.addEventListener('click', async () => {
         const url = urlInput.value.trim();
         if (!url){ setMsg('Ingresa una URL o ID','error'); return; }
+        if (connectCooldown) return; // Debounce básico
+        connectCooldown = true;
+        btn.disabled = true;
         try{
           setMsg('Conectando...');
           await fetch('/crm/sheets/connect',{
@@ -1101,10 +1115,27 @@
           urlInput.value = '';
           await renderList();
         }catch(err){ setMsg('Error al conectar','error'); }
+        finally {
+          btn.disabled = false;
+          setTimeout(()=>{ connectCooldown = false; }, 800);
+        }
       });
 
-      // Carga inicial
-      renderList();
+      // Carga perezosa cuando el panel entra en viewport
+      try {
+        const io = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              renderList();
+              io.disconnect();
+            }
+          })
+        }, { rootMargin: '0px 0px -30% 0px' });
+        io.observe(document.querySelector('section.max-w-6xl'));
+      } catch(_e){
+        // Fallback si IO no está disponible
+        renderList();
+      }
     })();
   </script>
   <!-- Sidebar -->
