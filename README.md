@@ -1,18 +1,60 @@
-# 🤖 WhatsBot IT - Bot de Soporte IT para WhatsApp
+# 🤖 Levi Assistant - Asistente Personal para Clientes Freelancer
 
-WhatsBot IT es un bot especializado en soporte técnico para WhatsApp que utiliza inteligencia artificial para ayudar a los usuarios con problemas de IT. El bot proporciona soporte técnico, gestión de tickets, proyectos y asistencia en general.
+Asistente virtual personal de Levi Villarreal diseñado para atender clientes freelancer a través de WhatsApp. Utiliza inteligencia artificial para proporcionar información sobre servicios, proyectos y disponibilidad.
+
+## 👨‍💻 Sobre Levi Villarreal
+
+🎓 De químico a Desarrollador Full Stack y Analista de IT, combino el análisis de datos y la precisión de laboratorio con la creatividad del código.
+
+💻 Actualmente trabajo como Analista de IT y desarrollo soluciones completas con Python, Node.js, React, Flask, TensorFlow, análisis de datos y SQL.
+
+🚀 Especializado en:
+- Desarrollo Full Stack (Python, Node.js, React, Flask)
+- Desarrollo de chatbots y automatización conversacional
+- Análisis de datos y proyectos de data science
+- Machine Learning y aplicaciones de IA
+- Desarrollo de aplicaciones web completas
+- Automatización de procesos
 
 ## ✨ Características Principales
 
-- **🤖 Bot de Soporte IT**: Bot especializado en soporte técnico
+- **🤖 Asistente Personal**: Bot especializado en atención a clientes freelancer
 - **🤖 Inteligencia Artificial Avanzada**: Utiliza Gemini AI y Claude para respuestas contextuales
 - **📱 Comandos Especializados**: Comandos específicos para tickets, proyectos, horarios y más
-- **🎯 Gestión de Tickets**: Sistema completo de gestión de tickets de soporte
+- **🎯 Gestión de Proyectos**: Sistema completo de gestión de proyectos freelancer
 - **🗣️ Comandos de Voz**: Procesamiento de audio con speech-to-text
 - **🔊 Respuestas de Voz**: Text-to-speech para respuestas en audio
 - **🌍 Multilingüe**: Soporte completo para múltiples idiomas
 - **🔄 Traducción Automática**: Traducción instantánea entre idiomas
 - **🌐 Panel de Administración**: Interfaz web para gestión y estadísticas
+
+## 🛠️ Tecnologías que manejo
+
+**Frontend:**
+- React
+- JavaScript
+- Bootstrap
+- HTML5
+- CSS3
+
+**Backend:**
+- Node.js
+- Python
+- Flask
+- SQL
+
+**Machine Learning & AI:**
+- TensorFlow
+
+**Análisis de Datos:**
+- Pandas
+- NumPy
+- Jupyter
+
+**Otras herramientas:**
+- Git
+- Linux
+- Arduino
 
 ## 🚀 Instalación y Configuración
 
@@ -63,7 +105,7 @@ JWT_SECRET=whatsbot_it_jwt_secret_muy_seguro_2024
 4. Copia la key generada
 5. Pégala en tu archivo `.env`
 
-### 4. Ejecutar WhatsBot IT
+### 4. Ejecutar Levi Assistant
 
 ```bash
 # Modo desarrollo (con recarga automática)
@@ -73,23 +115,23 @@ npm run dev
 npm start
 ```
 
-## 📱 Comandos del Bot de Soporte IT
+## 📱 Comandos del Asistente
 
-### Comandos de Soporte IT
+### Comandos de Gestión
 
 | Comando | Descripción | Ejemplo |
 |---------|-------------|---------|
-| `/ticket` | Gestión de tickets de soporte | `/ticket create pos El POS no imprime` |
-| `/proyectos` | Ver proyectos IT | `/proyectos` |
-| `/horarios` | Ver horarios | `/horarios` |
+| `/ticket` | Gestión de tickets de soporte/proyectos | `/ticket create proyecto Necesito una app web` |
+| `/proyectos` | Ver proyectos activos | `/proyectos` |
+| `/horarios` | Ver horarios disponibles | `/horarios` |
 
 ### Comandos Generales
 
 | Comando | Descripción | Ejemplo |
 |---------|-------------|---------|
-| `/chat [mensaje]` | Chatea con el asistente de IT | `/chat La impresora no funciona` |
+| `/chat [mensaje]` | Chatea con el asistente | `/chat ¿Qué servicios ofreces?` |
 | `/help` | Muestra todos los comandos disponibles | `/help` |
-| `/ping` | Verifica si WhatsBot IT está funcionando | `/ping` |
+| `/ping` | Verifica si el asistente está funcionando | `/ping` |
 
 ### Comandos de Administración
 
@@ -97,23 +139,28 @@ npm start
 |---------|-------------|---------|
 | `/admin` | Panel de administración | `/admin` |
 
-## 🎯 Características del Bot de Soporte IT
+## 🎯 Servicios Disponibles
 
-### Soporte Técnico
-- Gestión completa de tickets de soporte
-- Asistencia con problemas técnicos
-- Seguimiento de incidencias
-- Resolución de problemas comunes
+### Desarrollo Full Stack
+- Desarrollo de aplicaciones web completas
+- Frontend con React, JavaScript, Bootstrap
+- Backend con Node.js, Python, Flask
+- Bases de datos SQL
 
-### Gestión de Proyectos
-- Visualización de proyectos IT
-- Seguimiento de tareas
-- Gestión de horarios
+### Machine Learning & IA
+- Desarrollo de modelos con TensorFlow
+- Análisis de datos con Pandas y NumPy
+- Aplicaciones de inteligencia artificial
 
-### Respuestas Inteligentes
-- Respuestas contextuales usando IA
-- Sugerencias proactivas de soluciones
-- Guía paso a paso para resolver problemas
+### Chatbots y Automatización
+- Desarrollo de chatbots conversacionales
+- Automatización de procesos
+- Soluciones de automatización empresarial
+
+### Consultoría IT
+- Análisis de sistemas
+- Optimización de procesos
+- Consultoría técnica
 
 ## 🔧 APIs Opcionales
 
@@ -133,9 +180,9 @@ ASSEMBLYAI_API_KEY=tu_api_key
 ## 🌐 Panel de Administración
 
 - Accede en: `http://localhost:3000`
-- Gestión de usuarios y configuraciones
+- Gestión de clientes y proyectos
 - Monitoreo del estado del bot
-- Estadísticas de ventas y leads
+- Estadísticas de interacciones
 
 ## 🛠️ Solución de Problemas
 
@@ -159,17 +206,17 @@ MONGODB_URI is missing
 
 ### Error de Conexión
 ```
-Error comunicándose con WhatsBot IT
+Error comunicándose con Levi Assistant
 ```
 **Solución**: Verifica tu conexión a internet y la validez de tu API key
 
 ## 📊 Monitoreo y Logs
 
-WhatsBot IT genera logs detallados para:
-- Interacciones de soporte
-- Tickets creados y resueltos
+Levi Assistant genera logs detallados para:
+- Interacciones con clientes
+- Proyectos creados y gestionados
 - Errores de API
-- Problemas técnicos reportados
+- Consultas recibidas
 
 ## 🔒 Seguridad
 
@@ -178,28 +225,15 @@ WhatsBot IT genera logs detallados para:
 - No se almacenan mensajes personales
 - Cumple con las políticas de WhatsApp
 
-## 🤝 Contribuir
+## 🤝 Contacto
 
-¿Quieres contribuir a WhatsBot IT? ¡Excelente!
-
-1. Fork el repositorio
-2. Crea una rama para tu feature
-3. Haz commit de tus cambios
-4. Push a la rama
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-MIT License - Ver archivo LICENSE para más detalles.
-
-## 🆘 Soporte
-
-¿Necesitas ayuda? Contacta con nosotros:
-- 📱 WhatsApp: +52 56 6453 1621
-- 📧 Email: contacto@sancosmeit.com
-- 📘 Facebook: San Cosme IT
-- 📸 Instagram: @sancosmeit
+**Levi Villarreal**
+- 💻 Desarrollador Full Stack & Analista de IT
+- 🌐 GitHub: [boogiepop-135](https://github.com/boogiepop-135)
+- 📧 LinkedIn: [Levi Villarreal](https://linkedin.com/in/levivillarreal)
 
 ---
 
-**WhatsBot IT** - *Bot de soporte IT de San Cosme Orgánico* 🤖✨
+**Levi Assistant** - *Asistente personal de Levi Villarreal* 💻✨
+
+"Combino la precisión del laboratorio, el análisis de IT y la lógica del software para crear soluciones innovadoras. Desde análisis de datos con Python hasta chatbots, aplicaciones web y machine learning, siempre buscando resolver problemas reales. ¡Colaboremos!"

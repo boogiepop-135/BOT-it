@@ -292,41 +292,31 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     
     if (cleanQuery === '5' || cleanQuery === '5️⃣' || cleanQuery === 'hablar' || cleanQuery === 'contactar' || cleanQuery === 'agente' || cleanQuery === 'humano') {
         await message.reply(
-            `📞 *Contactar al Equipo IT de San Cosme Orgánico*\n\n` +
-            `Para contactar directamente con el equipo de IT:\n\n` +
-            `📧 *Correo:*\n` +
-            `sistemasit@sancosmeorg.com\n\n` +
-            `📱 *Teléfono:*\n` +
-            `+52 442 282 3539\n\n` +
-            `⏰ *Horario de Soporte:*\n` +
-            `Lunes a Viernes: 9:00 AM - 5:00 PM\n\n` +
-            `💡 *O crea un ticket urgente:*\n` +
-            `Escribe: \`!ticket\` o \`1\` y selecciona prioridad URGENTE\n\n` +
-            `_Para emergencias fuera de horario, crea un ticket urgente y será atendido lo antes posible._`
+            `📞 *Contactar a Levi Villarreal*\n\n` +
+            `Para consultas directas o cotizaciones:\n\n` +
+            `📱 WhatsApp: Este mismo número\n` +
+            `💻 Disponibilidad: Lunes a Viernes (horario flexible)\n\n` +
+            `*Para cotizaciones o proyectos, escríbeme directamente y te responderé a la brevedad.* 💻`
         );
         return;
     }
     
     if (cleanQuery === '6' || cleanQuery === '6️⃣' || cleanQuery === 'servicios' || cleanQuery === 'información') {
         await message.reply(
-            `🔧 *Servicios IT Disponibles - San Cosme Orgánico*\n\n` +
-            `💻 **Hardware**\n` +
-            `Reparación y mantenimiento de equipos, impresoras, computadoras\n\n` +
-            `📱 **Software**\n` +
-            `Instalación, actualización y soporte de programas\n\n` +
-            `🌐 **Network**\n` +
-            `Configuración de internet, WiFi, redes\n\n` +
-            `🔒 **Security**\n` +
-            `Gestión de accesos, contraseñas, permisos\n\n` +
-            `📧 **Microsoft 365**\n` +
-            `Correo, Teams, OneDrive, SharePoint\n\n` +
-            `💳 **POS**\n` +
-            `Sistema punto de venta Oracle POS\n\n` +
-            `💾 **Backup**\n` +
-            `Copias de seguridad y recuperación\n\n` +
-            `📋 **Otros**\n` +
-            `Cualquier otro problema IT\n\n` +
-            `*Crear ticket:* \`1\` o \`!ticket\``
+            `💻 *Servicios Disponibles - Levi Villarreal*\n\n` +
+            `🚀 **Desarrollo Full Stack**\n` +
+            `Aplicaciones web completas con Python, Node.js, React, Flask\n\n` +
+            `🤖 **Chatbots y Automatización**\n` +
+            `Desarrollo de chatbots conversacionales y automatización de procesos\n\n` +
+            `📊 **Análisis de Datos**\n` +
+            `Proyectos de data science con Pandas, NumPy, TensorFlow\n\n` +
+            `🧠 **Machine Learning & IA**\n` +
+            `Aplicaciones de inteligencia artificial y modelos ML\n\n` +
+            `⚙️ **Automatización**\n` +
+            `Automatización de procesos empresariales\n\n` +
+            `💡 **Consultoría IT**\n` +
+            `Asesoría técnica y análisis de sistemas\n\n` +
+            `*Para más información o cotización:* Escríbeme directamente 💻`
         );
         return;
     }
@@ -517,12 +507,12 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         
         // Personalized greetings based on role
         let greeting = '👋 ¡Hola!';
-        let welcomeMsg = '¡Bienvenido al Sistema de Soporte IT de San Cosme Orgánico! 🤩';
+        let welcomeMsg = '¡Bienvenido! Soy el asistente de Levi Villarreal, Desarrollador Full Stack y Analista de IT. 💻';
         
         // Presentación personalizada para Salma y Francisco con menú personalizado
         if (isBoss && bossName) {
             greeting = `👋 ¡Hola ${bossName}!`;
-            welcomeMsg = `Soy el asistente virtual de IT de San Cosme Orgánico. 🤖\n\nComo ${finalUserRole === 'ceo' ? 'CEO' : finalUserRole === 'admin' ? 'Administrador' : 'Directivo'}, tienes acceso completo al sistema.\n\n`;
+            welcomeMsg = `Soy el asistente virtual de Levi Villarreal. 🤖\n\nComo ${finalUserRole === 'ceo' ? 'CEO' : finalUserRole === 'admin' ? 'Administrador' : 'Cliente VIP'}, tienes acceso completo al sistema.\n\n`;
             
             const menuPersonalizado = `
 🔧 *¿En qué puedo ayudarte? Selecciona un número:*
@@ -571,14 +561,14 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         }
 
         if (finalUserRole === 'ceo') {
-            greeting = '👔 Buenos días, estimado';
-            welcomeMsg = '¡Bienvenido al Sistema de Soporte IT! 🤩\n\nComo CEO, tiene acceso prioritario a nuestros servicios.';
+            greeting = '👔 Buenos días';
+            welcomeMsg = '¡Bienvenido! Soy el asistente de Levi Villarreal. 💻\n\nComo cliente VIP, tiene acceso prioritario a nuestros servicios.';
         } else if (finalUserRole === 'boss') {
             greeting = '🤝 Hola';
-            welcomeMsg = '¡Bienvenido al Sistema de Soporte IT! 🤩\n\nComo directivo, tiene acceso preferencial.';
+            welcomeMsg = '¡Bienvenido! Soy el asistente de Levi Villarreal. 💻\n\nComo cliente preferencial, tiene acceso completo.';
         } else {
             greeting = '👋 ¡Hola';
-            welcomeMsg = '¡Bienvenido al Sistema de Soporte IT de San Cosme Orgánico! 🤩';
+            welcomeMsg = '¡Bienvenido! Soy el asistente de Levi Villarreal, Desarrollador Full Stack y Analista de IT. 💻';
         }
         
         if (userName) {
@@ -592,17 +582,17 @@ ${welcomeMsg}
 
 🔧 *¿En qué puedo ayudarte? Selecciona un número:*
 
-*Sistema de Tickets:*
-1️⃣ Crear nuevo ticket de soporte
-2️⃣ Ver mis tickets
-3️⃣ Consultar estado de un ticket
-4️⃣ Agregar comentario a ticket
+*Servicios y Proyectos:*
+1️⃣ Información sobre servicios
+2️⃣ Consultar proyectos activos
+3️⃣ Solicitar cotización
 
-*Contacto Directo:*
-5️⃣ Hablar con el equipo de IT
+*Contacto:*
+4️⃣ Contactar directamente con Levi
+5️⃣ Ver servicios disponibles
 
 *Información:*
-6️⃣ Ver servicios IT disponibles
+6️⃣ Ver servicios disponibles
 7️⃣ Ayuda y comandos
 
 *Responde solo con el número (ejemplo: 1) o escribe tu solicitud directa.*

@@ -26,15 +26,15 @@ export class AppConfig {
     }
 
     public getBotName(): string {
-        return "WhatsBot IT";
+        return "Levi Assistant";
     }
 
     public getBotAuthor(): string {
-        return "San Cosme IT - Agente de Ventas Inteligente";
+        return "Levi Villarreal - Desarrollador Full Stack & Analista de IT";
     }
 
     public getBotEmoji(): string {
-        return "🌱";
+        return "💻";
     }
 
     public getBotAvatar(reaction: BotReactionType = "friendly"): string {

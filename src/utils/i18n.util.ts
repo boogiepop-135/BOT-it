@@ -28,7 +28,7 @@ export const TRANSLATIONS = {
                 example: "translate fr ¡Hola chicos!"
             },
             chat: {
-                description: "Chatear con el agente de ventas de San Cosme IT",
+                description: "Chatear con el asistente personal de Levi",
                 example: "chat Hola, quiero más información"
             },
             meme: {
