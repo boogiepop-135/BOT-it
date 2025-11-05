@@ -576,6 +576,109 @@ export default function (botManager: BotManager) {
   router.use('/', feedbackApi);
   router.use('/', scheduledReportApi);
 
+  // Self-Destruct API
+  router.get('/admin/self-destruct/status', authenticate, authorizeAdmin, async (req, res) => {
+    try {
+      const { SelfDestructModel } = await import('../models/self-destruct.model');
+      const selfDestruct = await SelfDestructModel.findOne({ active: true });
+      
+      if (!selfDestruct) {
+        return res.json({ active: false });
+      }
+      
+      res.json({
+        active: selfDestruct.active,
+        scheduledDate: selfDestruct.scheduledDate,
+        activatedAt: selfDestruct.activatedAt,
+        activatedBy: selfDestruct.activatedBy
+      });
+    } catch (error) {
+      logger.error('Error getting self-destruct status:', error);
+      res.status(500).json({ error: 'Error al obtener estado de auto-destrucción' });
+    }
+  });
+
+  router.post('/admin/self-destruct/activate', authenticate, authorizeAdmin, async (req, res) => {
+    try {
+      const { SelfDestructModel } = await import('../models/self-destruct.model');
+      const userNumber = (req as any).user?.phoneNumber || 'admin';
+      
+      // Verificar si ya hay una auto-destrucción activa
+      const existing = await SelfDestructModel.findOne({ active: true });
+      if (existing) {
+        return res.status(400).json({ error: 'Ya hay una auto-destrucción activa' });
+      }
+      
+      // Calcular fecha en 3 días
+      const fechaDestruccion = new Date();
+      fechaDestruccion.setDate(fechaDestruccion.getDate() + 3);
+      
+      // Crear o actualizar registro
+      const selfDestruct = await SelfDestructModel.findOneAndUpdate(
+        {},
+        {
+          active: true,
+          scheduledDate: fechaDestruccion,
+          activatedAt: new Date(),
+          activatedBy: userNumber
+        },
+        { upsert: true, new: true }
+      );
+      
+      // Enviar comunicado a todos los usuarios
+      const comunicado = `⚠️ *COMUNICADO IMPORTANTE*\n\n` +
+        `El bot de soporte IT de San Cosme Orgánico se detendrá automáticamente en 3 días.\n\n` +
+        `📅 Fecha de detención: ${fechaDestruccion.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n` +
+        `Por favor, asegúrate de resolver cualquier pendiente antes de esa fecha.\n\n` +
+        `Gracias por usar nuestro servicio.`;
+      
+      const contactos = await ContactModel.find({}).lean();
+      let enviados = 0;
+      
+      for (const contacto of contactos) {
+        try {
+          const success = await botManager.sendMessageToUser(contacto.phoneNumber, comunicado);
+          if (success) enviados++;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          logger.error(`Error enviando comunicado a ${contacto.phoneNumber}:`, error);
+        }
+      }
+      
+      res.json({
+        success: true,
+        scheduledDate: selfDestruct.scheduledDate,
+        messagesSent: enviados
+      });
+      
+      logger.warn(`🚨 AUTO-DESTRUCCIÓN ACTIVADA por ${userNumber}. Fecha: ${fechaDestruccion.toISOString()}`);
+    } catch (error) {
+      logger.error('Error activating self-destruct:', error);
+      res.status(500).json({ error: 'Error al activar auto-destrucción' });
+    }
+  });
+
+  router.post('/admin/self-destruct/cancel', authenticate, authorizeAdmin, async (req, res) => {
+    try {
+      const { SelfDestructModel } = await import('../models/self-destruct.model');
+      
+      const existing = await SelfDestructModel.findOne({ active: true });
+      if (!existing) {
+        return res.status(400).json({ error: 'No hay auto-destrucción activa' });
+      }
+      
+      existing.active = false;
+      await existing.save();
+      
+      res.json({ success: true });
+      
+      logger.info('Auto-destrucción cancelada');
+    } catch (error) {
+      logger.error('Error canceling self-destruct:', error);
+      res.status(500).json({ error: 'Error al cancelar auto-destrucción' });
+    }
+  });
+
     return router;
 }
 

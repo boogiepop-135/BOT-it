@@ -97,9 +97,21 @@ export const run = async (message: Message, args: string[] | null, userI18n: Use
             return;
         }
 
-        if (textoMensaje.includes("métricas tickets") || textoMensaje.includes("metricas tickets") ||
-            textoMensaje.includes("estadísticas tickets") || textoMensaje.includes("estadisticas tickets")) {
-            await mostrarMetricasTickets(message);
+        if (textoMensaje.includes("autodestruir") || textoMensaje.includes("auto destruir") ||
+            textoMensaje.includes("destruir bot") || textoMensaje.includes("destruir") ||
+            textoMensaje.startsWith("!autodestruir")) {
+            await iniciarAutoDestruir(message, userNumber);
+            return;
+        }
+
+        if (textoMensaje.includes("cancelar autodestruir") || textoMensaje.includes("cancelar destrucción") ||
+            textoMensaje.includes("desactivar autodestruir")) {
+            await cancelarAutoDestruir(message);
+            return;
+        }
+
+        if (textoMensaje.includes("estado autodestruir") || textoMensaje.includes("ver autodestruir")) {
+            await verEstadoAutoDestruir(message);
             return;
         }
 
@@ -130,6 +142,10 @@ export const run = async (message: Message, args: string[] | null, userI18n: Use
             `"proyectos" - Ver proyectos IT\n` +
             `"tareas" - Ver tareas activas\n` +
             `"reportes" - Ver reportes programados\n\n` +
+            `⚠️ *AUTO-DESTRUCCIÓN*\n` +
+            `"autodestruir" - Activar auto-destrucción del bot (3 días)\n` +
+            `"cancelar autodestruir" - Desactivar auto-destrucción\n` +
+            `"estado autodestruir" - Ver estado de auto-destrucción\n\n` +
             `_Escribe \`cancel\` en cualquier momento para cancelar._`
         );
     } catch (error) {
@@ -674,6 +690,154 @@ async function mostrarMetricasTickets(message: Message) {
     } catch (error: any) {
         logger.error("Error mostrando métricas de tickets:", error);
         await message.reply(`❌ Error al obtener métricas: ${error.message || 'Error desconocido'}`);
+    }
+}
+
+async function iniciarAutoDestruir(message: Message, userNumber: string) {
+    try {
+        const { SelfDestructModel } = await import('../crm/models/self-destruct.model');
+        
+        // Verificar si ya hay una auto-destrucción activa
+        const existing = await SelfDestructModel.findOne({ active: true });
+        if (existing) {
+            const fechaDestruccion = new Date(existing.scheduledDate);
+            const ahora = new Date();
+            const diasRestantes = Math.ceil((fechaDestruccion.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24));
+            
+            await message.reply(
+                `⚠️ *Auto-destrucción ya está activa*\n\n` +
+                `📅 Fecha programada: ${fechaDestruccion.toLocaleString('es-MX')}\n` +
+                `⏰ Días restantes: ${diasRestantes}\n\n` +
+                `Usa "cancelar autodestruir" para desactivarla.`
+            );
+            return;
+        }
+        
+        // Calcular fecha en 3 días
+        const fechaDestruccion = new Date();
+        fechaDestruccion.setDate(fechaDestruccion.getDate() + 3);
+        
+        // Crear o actualizar registro
+        await SelfDestructModel.findOneAndUpdate(
+            {},
+            {
+                active: true,
+                scheduledDate: fechaDestruccion,
+                activatedAt: new Date(),
+                activatedBy: userNumber
+            },
+            { upsert: true, new: true }
+        );
+        
+        // Enviar comunicado a todos los usuarios
+        const botManager = BotManager.getInstance();
+        const comunicado = `⚠️ *COMUNICADO IMPORTANTE*\n\n` +
+            `El bot de soporte IT de San Cosme Orgánico se detendrá automáticamente en 3 días.\n\n` +
+            `📅 Fecha de detención: ${fechaDestruccion.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n` +
+            `Por favor, asegúrate de resolver cualquier pendiente antes de esa fecha.\n\n` +
+            `Gracias por usar nuestro servicio.`;
+        
+        // Obtener todos los contactos y enviarles el mensaje
+        const contactos = await ContactModel.find({}).lean();
+        let enviados = 0;
+        let fallidos = 0;
+        
+        for (const contacto of contactos) {
+            try {
+                const success = await botManager.sendMessageToUser(contacto.phoneNumber, comunicado);
+                if (success) {
+                    enviados++;
+                } else {
+                    fallidos++;
+                }
+                // Pequeño delay para no saturar
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (error) {
+                logger.error(`Error enviando comunicado a ${contacto.phoneNumber}:`, error);
+                fallidos++;
+            }
+        }
+        
+        await message.reply(
+            `✅ *Auto-destrucción activada*\n\n` +
+            `📅 Fecha programada: ${fechaDestruccion.toLocaleString('es-MX')}\n` +
+            `⏰ El bot se detendrá automáticamente en 3 días.\n\n` +
+            `📤 Comunicado enviado:\n` +
+            `✅ Exitosos: ${enviados}\n` +
+            `❌ Fallidos: ${fallidos}\n\n` +
+            `⚠️ Usa "cancelar autodestruir" para desactivarla.`
+        );
+        
+        logger.warn(`🚨 AUTO-DESTRUCCIÓN ACTIVADA por ${userNumber}. Fecha: ${fechaDestruccion.toISOString()}`);
+    } catch (error: any) {
+        logger.error("Error activando auto-destrucción:", error);
+        await message.reply(`❌ Error al activar auto-destrucción: ${error.message || 'Error desconocido'}`);
+    }
+}
+
+async function cancelarAutoDestruir(message: Message) {
+    try {
+        const { SelfDestructModel } = await import('../crm/models/self-destruct.model');
+        
+        const existing = await SelfDestructModel.findOne({ active: true });
+        if (!existing) {
+            await message.reply(`ℹ️ No hay auto-destrucción activa actualmente.`);
+            return;
+        }
+        
+        existing.active = false;
+        await existing.save();
+        
+        await message.reply(
+            `✅ *Auto-destrucción cancelada*\n\n` +
+            `El bot continuará funcionando normalmente.\n\n` +
+            `La auto-destrucción ha sido desactivada exitosamente.`
+        );
+        
+        logger.info(`Auto-destrucción cancelada por ${(await message.getContact()).number}`);
+    } catch (error: any) {
+        logger.error("Error cancelando auto-destrucción:", error);
+        await message.reply(`❌ Error al cancelar auto-destrucción: ${error.message || 'Error desconocido'}`);
+    }
+}
+
+async function verEstadoAutoDestruir(message: Message) {
+    try {
+        const { SelfDestructModel } = await import('../crm/models/self-destruct.model');
+        
+        const existing = await SelfDestructModel.findOne({ active: true });
+        if (!existing) {
+            await message.reply(`✅ *Estado: Inactivo*\n\nNo hay auto-destrucción programada actualmente.`);
+            return;
+        }
+        
+        const fechaDestruccion = new Date(existing.scheduledDate);
+        const ahora = new Date();
+        const tiempoRestante = fechaDestruccion.getTime() - ahora.getTime();
+        const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+        const horasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60));
+        
+        let estado = `⚠️ *AUTO-DESTRUCCIÓN ACTIVA*\n\n`;
+        estado += `📅 Fecha programada: ${fechaDestruccion.toLocaleString('es-MX')}\n`;
+        estado += `⏰ Tiempo restante: `;
+        
+        if (diasRestantes > 0) {
+            estado += `${diasRestantes} día(s)`;
+        } else if (horasRestantes > 0) {
+            estado += `${horasRestantes} hora(s)`;
+        } else {
+            estado += `Menos de 1 hora`;
+        }
+        
+        estado += `\n\n`;
+        estado += `👤 Activado por: ${existing.activatedBy || 'N/A'}\n`;
+        estado += `📅 Activado el: ${new Date(existing.activatedAt).toLocaleString('es-MX')}\n\n`;
+        estado += `⚠️ El bot se detendrá automáticamente cuando llegue la fecha programada.`;
+        
+        await message.reply(estado);
+    } catch (error: any) {
+        logger.error("Error consultando estado de auto-destrucción:", error);
+        await message.reply(`❌ Error al consultar estado: ${error.message || 'Error desconocido'}`);
     }
 }
 

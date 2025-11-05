@@ -1361,6 +1361,10 @@
         <i class="fas fa-chart-bar w-5"></i>
         <span>Reportes</span>
       </a>
+      <a href="#" data-section="self-destruct" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition">
+        <i class="fas fa-exclamation-triangle w-5"></i>
+        <span>Auto-Destrucción</span>
+      </a>
     </nav>
     
     <div class="absolute bottom-0 w-full p-4 border-t bg-white">
@@ -1984,6 +1988,58 @@
       <h2 class="text-2xl font-bold text-gray-800 mb-6">Reportes y Métricas</h2>
       <!-- Reports content -->
     </div>
+
+    <!-- Self-Destruct Section -->
+    <div id="self-destruct-section" class="section-content hidden">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-red-600 mb-2">
+          <i class="fas fa-exclamation-triangle mr-2"></i>
+          Auto-Destrucción del Bot
+        </h2>
+        <p class="text-gray-600">Activa la auto-destrucción programada del bot</p>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
+        <div id="self-destruct-status" class="mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Estado Actual</h3>
+            <button onclick="loadSelfDestructStatus()" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+          </div>
+          <div id="self-destruct-info" class="bg-gray-50 rounded-lg p-4">
+            <p class="text-gray-600">Cargando estado...</p>
+          </div>
+        </div>
+
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Acciones</h3>
+          <div class="flex gap-4">
+            <button onclick="activateSelfDestruct()" id="activate-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition flex items-center">
+              <i class="fas fa-bomb mr-2"></i>
+              Activar Auto-Destrucción
+            </button>
+            <button onclick="cancelSelfDestruct()" id="cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition flex items-center hidden">
+              <i class="fas fa-times mr-2"></i>
+              Cancelar Auto-Destrucción
+            </button>
+          </div>
+          <div id="self-destruct-message" class="mt-4"></div>
+        </div>
+
+        <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h4 class="font-semibold text-yellow-800 mb-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            Advertencia
+          </h4>
+          <p class="text-sm text-yellow-700">
+            Al activar la auto-destrucción, el bot se detendrá automáticamente en 3 días.
+            Se enviará un comunicado a todos los usuarios notificándoles sobre esta acción.
+            Esta acción es irreversible una vez que se alcance la fecha programada.
+          </p>
+        </div>
+      </div>
+    </div>
   </main>
 
   <!-- Modal Sheets Integrations -->
@@ -2507,6 +2563,9 @@
       }
       if (section === 'groups') loadGroups();
       if (section === 'reminders') loadReminders();
+      if (section === 'self-destruct') {
+        loadSelfDestructStatus();
+      }
     }
     
     // Restaurar sección activa al cargar la página
@@ -4454,5 +4513,179 @@
       </div>
     </div>
   </div>
+
+  <!-- Self-Destruct Functions -->
+  <script>
+    async function loadSelfDestructStatus() {
+      const infoDiv = document.getElementById('self-destruct-info');
+      const activateBtn = document.getElementById('activate-btn');
+      const cancelBtn = document.getElementById('cancel-btn');
+      
+      try {
+        const response = await fetch('/api/admin/self-destruct/status', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Error al cargar estado');
+        }
+        
+        const data = await response.json();
+        
+        if (data.active) {
+          const fechaDestruccion = new Date(data.scheduledDate);
+          const ahora = new Date();
+          const tiempoRestante = fechaDestruccion.getTime() - ahora.getTime();
+          const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+          const horasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60));
+          
+          let tiempoTexto = '';
+          if (diasRestantes > 0) {
+            tiempoTexto = `${diasRestantes} día(s)`;
+          } else if (horasRestantes > 0) {
+            tiempoTexto = `${horasRestantes} hora(s)`;
+          } else {
+            tiempoTexto = 'Menos de 1 hora';
+          }
+          
+          infoDiv.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div class="flex items-center mb-2">
+                <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
+                <span class="font-semibold text-red-800">AUTO-DESTRUCCIÓN ACTIVA</span>
+              </div>
+              <div class="space-y-2 text-sm">
+                <p><strong>Fecha programada:</strong> ${fechaDestruccion.toLocaleString('es-MX')}</p>
+                <p><strong>Tiempo restante:</strong> ${tiempoTexto}</p>
+                <p><strong>Activado por:</strong> ${data.activatedBy || 'N/A'}</p>
+                <p><strong>Activado el:</strong> ${new Date(data.activatedAt).toLocaleString('es-MX')}</p>
+              </div>
+            </div>
+          `;
+          
+          activateBtn.classList.add('hidden');
+          cancelBtn.classList.remove('hidden');
+        } else {
+          infoDiv.innerHTML = `
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                <span class="font-semibold text-green-800">Estado: Inactivo</span>
+              </div>
+              <p class="text-sm text-gray-600 mt-2">No hay auto-destrucción programada actualmente.</p>
+            </div>
+          `;
+          
+          activateBtn.classList.remove('hidden');
+          cancelBtn.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Error loading self-destruct status:', error);
+        infoDiv.innerHTML = `
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p class="text-yellow-800">Error al cargar el estado: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    async function activateSelfDestruct() {
+      if (!confirm('⚠️ ¿Estás seguro de que quieres activar la auto-destrucción?\n\nEl bot se detendrá automáticamente en 3 días y se enviará un comunicado a todos los usuarios.\n\nEsta acción no se puede deshacer fácilmente.')) {
+        return;
+      }
+      
+      const messageDiv = document.getElementById('self-destruct-message');
+      const activateBtn = document.getElementById('activate-btn');
+      
+      try {
+        activateBtn.disabled = true;
+        activateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Activando...';
+        messageDiv.innerHTML = '<p class="text-gray-600">Enviando comunicado a usuarios...</p>';
+        
+        const response = await fetch('/api/admin/self-destruct/activate', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al activar auto-destrucción');
+        }
+        
+        const data = await response.json();
+        
+        messageDiv.innerHTML = `
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p class="text-green-800 font-semibold">✅ Auto-destrucción activada exitosamente</p>
+            <p class="text-sm text-gray-700 mt-2">
+              Fecha programada: ${new Date(data.scheduledDate).toLocaleString('es-MX')}<br>
+              Comunicados enviados: ${data.messagesSent || 0} exitosos
+            </p>
+          </div>
+        `;
+        
+        await loadSelfDestructStatus();
+      } catch (error) {
+        console.error('Error activating self-destruct:', error);
+        messageDiv.innerHTML = `
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-red-800">❌ Error: ${error.message}</p>
+          </div>
+        `;
+      } finally {
+        activateBtn.disabled = false;
+        activateBtn.innerHTML = '<i class="fas fa-bomb mr-2"></i>Activar Auto-Destrucción';
+      }
+    }
+
+    async function cancelSelfDestruct() {
+      if (!confirm('¿Estás seguro de que quieres cancelar la auto-destrucción?\n\nEl bot continuará funcionando normalmente.')) {
+        return;
+      }
+      
+      const messageDiv = document.getElementById('self-destruct-message');
+      const cancelBtn = document.getElementById('cancel-btn');
+      
+      try {
+        cancelBtn.disabled = true;
+        cancelBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Cancelando...';
+        
+        const response = await fetch('/api/admin/self-destruct/cancel', {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al cancelar auto-destrucción');
+        }
+        
+        messageDiv.innerHTML = `
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p class="text-green-800 font-semibold">✅ Auto-destrucción cancelada exitosamente</p>
+            <p class="text-sm text-gray-700 mt-2">El bot continuará funcionando normalmente.</p>
+          </div>
+        `;
+        
+        await loadSelfDestructStatus();
+      } catch (error) {
+        console.error('Error canceling self-destruct:', error);
+        messageDiv.innerHTML = `
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-red-800">❌ Error: ${error.message}</p>
+          </div>
+        `;
+      } finally {
+        cancelBtn.disabled = false;
+        cancelBtn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancelar Auto-Destrucción';
+      }
+    }
+  </script>
 </body>
 </html>

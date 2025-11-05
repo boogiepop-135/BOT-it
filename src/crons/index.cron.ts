@@ -1,6 +1,7 @@
 import { checkScheduledCampaigns } from "./campaign.cron";
 import { schedulePaymentReminders } from "./payment-reminder.cron";
 import { scheduleReportJobs } from "./scheduled-report.cron";
+import { checkSelfDestruct } from "./self-destruct.cron";
 import { BotManager } from "../bot.manager";
 import { CronJob } from "cron";
 import logger from "../configs/logger.config";
@@ -20,6 +21,15 @@ export function initCrons(botManager: BotManager) {
     
     // Schedule automated reports for CEOs
     scheduleReportJobs(botManager);
+    
+    // Check self-destruct status every 5 minutes
+    new CronJob(
+        "*/5 * * * *",
+        () => checkSelfDestruct(botManager),
+        null,
+        true,
+        "Africa/Lome"
+    );
     
     logger.info("Cron jobs initialized");
 }
