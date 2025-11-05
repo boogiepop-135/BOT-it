@@ -7,6 +7,7 @@ import { textToSpeech } from "../utils/text-to-speech.util";
 import { del_file } from "../utils/common.util";
 import { UserI18n } from "../utils/i18n.util";
 import SalesTracker from "../utils/sales-tracker.util";
+import { analyzeIntent } from "../utils/intent-detector.util";
 
 const fs = require('fs');
 const path = require('path');
@@ -381,17 +382,61 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         }
     }
     
-    // Detectar si el mensaje es sobre IT y redirigir automáticamente
-    if (query && isITRelated(query)) {
-        await message.reply(
-            `🔧 Detecté que necesitas soporte técnico.\n\n` +
-            `Voy a iniciar el asistente para crear tu ticket.\n\n` +
-            `Responde las siguientes preguntas:`
-        );
-        // Automatically start ticket creation
-        const { run: runTicket } = await import('./ticket.command');
-        await runTicket(message, ['create'], userI18n);
-        return;
+    // MEJORADO: Usar análisis inteligente de intenciones antes de procesar
+    let userRole = 'user';
+    try {
+        const contact = await message.getContact();
+        const { ContactModel } = await import('../crm/models/contact.model');
+        const dbContact = await ContactModel.findOne({ phoneNumber: contact.number });
+        userRole = (dbContact?.role || '').toLowerCase();
+    } catch (e) {
+        // Ignorar errores de contacto
+    }
+
+    // Si hay query, analizar intención de manera inteligente
+    if (query && !esSaludoSimple && query.trim().length > 3) {
+        try {
+            const intentAnalysis = await analyzeIntent(query, userRole);
+            logger.info(`Intent detected: ${intentAnalysis.intent} (confidence: ${intentAnalysis.confidence})`);
+
+            // Si detecta intención de ticket o soporte IT con alta confianza, redirigir directamente
+            if (intentAnalysis.intent === 'it_support' || intentAnalysis.intent === 'ticket') {
+                if (intentAnalysis.confidence > 0.7) {
+                    await message.reply(
+                        `🔧 Detecté que necesitas soporte técnico.\n\n` +
+                        `Te ayudo a crear un ticket para resolverlo. 📝`
+                    );
+                    const { run: runTicket } = await import('./ticket.command');
+                    await runTicket(message, ['create'], userI18n);
+                    return;
+                }
+            }
+
+            // Si detecta intención clara de otro tipo, procesar según corresponda
+            if (intentAnalysis.intent === 'project' && intentAnalysis.confidence > 0.8) {
+                const { run: runProyectos } = await import('./proyectos.command');
+                await runProyectos(message, ['list'], userI18n);
+                return;
+            }
+
+            if (intentAnalysis.intent === 'help' && intentAnalysis.confidence > 0.8) {
+                // Mostrar ayuda según rol
+                if (userRole.startsWith('rh')) {
+                    await message.reply(`📝 Ticket: \`!ticket\`. Altas: \`!rh alta\`. Bajas: \`!rh baja\`.`);
+                } else if (userRole.includes('inrra')) {
+                    await message.reply(`📝 Ticket: \`!ticket\`. Proyectos: escribe "proyectos".`);
+                } else {
+                    await message.reply(`📝 Ticket: \`!ticket\`. 📋 Mis tickets: \`!ticket list\`.`);
+                }
+                return;
+            }
+
+            // Si la confianza es baja o es conversación, continuar al flujo normal
+            // (no hacer nada aquí, dejar que continúe al procesamiento con IA)
+        } catch (error) {
+            logger.warn('Error en análisis de intenciones, continuando con flujo normal:', error);
+            // Continuar con el flujo normal si falla el análisis
+        }
     }
     
     // Si no es sobre IT: mostrar ayuda solo para mensajes muy cortos y con cooldown
@@ -427,11 +472,11 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     }
 
     if ((!query || esSaludoSimple) && message.type !== MessageTypes.VOICE) {
-        // Get user role for personalized greeting
-        let userRole = 'user';
+        // Get user role for personalized greeting (ya obtenido arriba, reutilizar)
         let userName = '';
         let isBoss = false;
         let bossName = '';
+        let finalUserRole = userRole; // Usar el rol obtenido arriba
         
         try {
             const contact = await message.getContact();
@@ -444,7 +489,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             if (bossInfo) {
                 isBoss = true;
                 bossName = bossInfo.name;
-                userRole = bossInfo.role; // Usar el rol configurado (boss, ceo, admin)
+                finalUserRole = bossInfo.role; // Usar el rol configurado (boss, ceo, admin)
                 // Asignar automáticamente el rol y nombre en la base de datos
                 await ContactModel.findOneAndUpdate(
                     { phoneNumber: contact.number },
@@ -461,7 +506,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             
             const dbContact = await ContactModel.findOne({ phoneNumber: contact.number });
             if (dbContact && !bossName) {
-                userRole = dbContact.role || userRole;
+                finalUserRole = dbContact.role || finalUserRole;
                 userName = dbContact.name || dbContact.pushName || userName;
             } else if (!userName) {
                 userName = contact.name || contact.pushname || '';
@@ -477,7 +522,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         // Presentación personalizada para Salma y Francisco con menú personalizado
         if (isBoss && bossName) {
             greeting = `👋 ¡Hola ${bossName}!`;
-            welcomeMsg = `Soy el asistente virtual de IT de San Cosme Orgánico. 🤖\n\nComo ${userRole === 'ceo' ? 'CEO' : userRole === 'admin' ? 'Administrador' : 'Directivo'}, tienes acceso completo al sistema.\n\n`;
+            welcomeMsg = `Soy el asistente virtual de IT de San Cosme Orgánico. 🤖\n\nComo ${finalUserRole === 'ceo' ? 'CEO' : finalUserRole === 'admin' ? 'Administrador' : 'Directivo'}, tienes acceso completo al sistema.\n\n`;
             
             const menuPersonalizado = `
 🔧 *¿En qué puedo ayudarte? Selecciona un número:*
@@ -513,7 +558,7 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
         }
         
         // Respuesta minimal por rol RH
-        if ((userRole || '').toLowerCase().startsWith('rh')) {
+        if ((finalUserRole || '').toLowerCase().startsWith('rh')) {
             const firstName = userName ? userName.split(' ')[0] : '';
             await message.reply(
                 `${firstName ? '👋 ¡Hola ' + firstName + '!' : '👋 ¡Hola!'}\n\n` +
@@ -525,10 +570,10 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
             return;
         }
 
-        if (userRole === 'ceo') {
+        if (finalUserRole === 'ceo') {
             greeting = '👔 Buenos días, estimado';
             welcomeMsg = '¡Bienvenido al Sistema de Soporte IT! 🤩\n\nComo CEO, tiene acceso prioritario a nuestros servicios.';
-        } else if (userRole === 'boss') {
+        } else if (finalUserRole === 'boss') {
             greeting = '🤝 Hola';
             welcomeMsg = '¡Bienvenido al Sistema de Soporte IT! 🤩\n\nComo directivo, tiene acceso preferencial.';
         } else {
