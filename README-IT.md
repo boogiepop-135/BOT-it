@@ -1,4 +1,4 @@
-# Sistema de Gestión IT - San Cosme Orgánico
+# Sistema de Gestión - Levi Assistant
 
 Sistema completo de gestión de tickets de incidencias, proyectos y panel de administración para el Analista de Tecnologías de la Información.
 
@@ -323,5 +323,5 @@ Para problemas con el sistema, contacta al equipo de desarrollo o crea un ticket
 
 ---
 
-Desarrollado para San Cosme Orgánico | Analista de IT
+Desarrollado por Levi Villarreal | Desarrollador Full Stack & Analista de IT
 

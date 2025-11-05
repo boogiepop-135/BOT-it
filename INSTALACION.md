@@ -1,4 +1,4 @@
-# Guía de Instalación - Sistema IT San Cosme Orgánico
+# Guía de Instalación - Levi Assistant
 
 ## ⚠️ IMPORTANTE: Crear Usuario Administrador Primero
 
