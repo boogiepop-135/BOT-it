@@ -732,7 +732,7 @@ async function iniciarAutoDestruir(message: Message, userNumber: string) {
         // Enviar comunicado a todos los usuarios
         const botManager = BotManager.getInstance();
         const comunicado = `⚠️ *COMUNICADO IMPORTANTE*\n\n` +
-            `El bot de soporte IT de San Cosme Orgánico se detendrá automáticamente en 3 días.\n\n` +
+            `El asistente de Levi Villarreal se detendrá automáticamente en 3 días.\n\n` +
             `📅 Fecha de detención: ${fechaDestruccion.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n` +
             `Por favor, asegúrate de resolver cualquier pendiente antes de esa fecha.\n\n` +
             `Gracias por usar nuestro servicio.`;

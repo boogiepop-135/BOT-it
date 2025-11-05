@@ -11,7 +11,7 @@ import logger from '../configs/logger.config';
  * Generador de reportes para CEOs
  * 
  * Sistema de automatización desarrollado por Levi Eduardo
- * para San Cosme Orgánico - Automatización Integral
+ * para Levi Villarreal - Asistente Personal
  */
 
 export interface ReportData {
@@ -388,7 +388,7 @@ function getPersonalizedGreeting(phoneNumber: string, startDateStr: string, endD
         return `👋 *Hola Francisco!*\n\n📊 *Reporte Semanal de IT*\n\n*Período:* ${startDateStr} - ${endDateStr}\n\nTe comparto el resumen semanal de actividades del área de IT:`;
     }
     
-    return `📊 *REPORTE AUTOMÁTICO - SAN COSME ORGÁNICO*\n\n*Período:* ${startDateStr} - ${endDateStr}`;
+    return `📊 *REPORTE AUTOMÁTICO - LEVI VILLARREAL*\n\n*Período:* ${startDateStr} - ${endDateStr}`;
 }
 
 /**
@@ -585,11 +585,11 @@ function formatReport(data: ReportData, config: IScheduledReport, recipientPhone
     // Mensaje de cierre personalizado
     const recipientName = getRecipientName(phoneNumber);
     if (recipientName === 'Salma') {
-        report += `\n---\n💼 *Cualquier pregunta o seguimiento que necesites, estoy a tus órdenes.*\n\n🤖 Reporte generado automáticamente por Levi Eduardo\n🏢 San Cosme Orgánico - Área IT`;
+        report += `\n---\n💼 *Cualquier pregunta o seguimiento que necesites, estoy a tus órdenes.*\n\n🤖 Reporte generado automáticamente por Levi Villarreal\n💻 Desarrollador Full Stack & Analista de IT`;
     } else if (recipientName === 'Francisco') {
-        report += `\n---\n💼 *Si necesitas más detalles o seguimiento de algún tema, con gusto te ayudo.*\n\n🤖 Reporte generado automáticamente por Levi Eduardo\n🏢 San Cosme Orgánico - Área IT`;
+        report += `\n---\n💼 *Si necesitas más detalles o seguimiento de algún tema, con gusto te ayudo.*\n\n🤖 Reporte generado automáticamente por Levi Villarreal\n💻 Desarrollador Full Stack & Analista de IT`;
     } else {
-        report += `\n---\n🤖 *Reporte generado automáticamente*\n💻 Programado por: Levi Eduardo\n🏢 San Cosme Orgánico - Automatización Integral`;
+        report += `\n---\n🤖 *Reporte generado automáticamente*\n💻 Programado por: Levi Villarreal\n🚀 Desarrollador Full Stack & Analista de IT`;
     }
 
     return report;

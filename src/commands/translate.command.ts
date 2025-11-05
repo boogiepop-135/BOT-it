@@ -9,25 +9,25 @@ export const run = async (message: Message, args: string[], userI18n: UserI18n) 
     const query = args.join(" ");
 
     if (!lang || !query) {
-        message.reply('> San Cosme IT 🤖 Por favor proporciona un código de idioma y un mensaje para traducir.');
+        message.reply('> Levi Assistant 💻 Por favor proporciona un código de idioma y un mensaje para traducir.');
         return;
     }
 
     if (!Object.keys(languages).includes(lang)) {
-        message.reply('> San Cosme IT 🤖 Código de idioma no soportado. Por favor usa un código de idioma válido.');
+        message.reply('> Levi Assistant 💻 Código de idioma no soportado. Por favor usa un código de idioma válido.');
     }
 
     try {
         
         const payload: any = await translateText(query, lang);
         if (!payload) {
-            message.reply('> San Cosme IT 🤖 No se encontró traducción.');
+            message.reply('> Levi Assistant 💻 No se encontró traducción.');
             return;
         }
 
         message.reply(AppConfig.instance.printMessage(`Translated text : *${payload.text}*`));
     } catch (err) {
         logger.error(err);
-        message.reply('> San Cosme IT 🤖 Error de traducción.');
+        message.reply('> Levi Assistant 💻 Error de traducción.');
     }
 };

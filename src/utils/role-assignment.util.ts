@@ -53,7 +53,7 @@ export function generateRoleAssignmentMessage(role: ContactRole, userName: strin
     
     let message = `✅ *Asignación de Rol Confirmada*\n\n`;
     message += `Hola ${userName},\n\n`;
-    message += `Se te ha asignado el rol de *${roleName}* en el Sistema de Soporte IT de San Cosme Orgánico.\n\n`;
+    message += `Se te ha asignado el rol de *${roleName}* en el asistente de Levi Villarreal.\n\n`;
     
     // Mensajes personalizados según el rol
     switch (role) {

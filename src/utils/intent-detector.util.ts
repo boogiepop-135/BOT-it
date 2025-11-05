@@ -158,7 +158,7 @@ function quickIntentCheck(
  */
 async function analyzeWithAI(message: string, userRole?: string): Promise<IntentAnalysis> {
     // Prompt más corto y eficiente para análisis de intenciones
-    const prompt = `Analiza este mensaje de WhatsApp para bot de soporte IT "San Cosme Orgánico".
+    const prompt = `Analiza este mensaje de WhatsApp para asistente personal de Levi Villarreal (Desarrollador Full Stack & Analista de IT).
 
 Rol usuario: ${userRole || 'user'}
 

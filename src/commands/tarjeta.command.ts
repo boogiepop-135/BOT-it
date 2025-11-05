@@ -31,8 +31,8 @@ https://mpago.li/1W2JhS5
 ✅ Acompañamiento personalizado
 
 *CONTACTO POST-PAGO* 📱
-📞 WhatsApp: +52 56 6453 1621
-📧 Email: contacto@sancosmeit.com
+📞 WhatsApp: [Tu número]
+📧 Email: [Tu email]
 
 ¿Tienes alguna duda sobre el proceso de pago? ¿Necesitas ayuda con algún paso? 🌱
 `;

@@ -30,8 +30,8 @@ export const run = async (message: Message, args: string[] = null, userI18n: Use
                 `▶️ *Para reanudar el bot:*\n` +
                 `Envía: \`!start\`\n\n` +
                 `📧 *Si necesitas ayuda urgente:*\n` +
-                `sistemasit@sancosmeorg.com\n` +
-                `+52 442 282 3539`
+                `Contacta directamente a Levi Villarreal\n` +
+                `Por este mismo WhatsApp`
             );
         } else {
             await message.reply(

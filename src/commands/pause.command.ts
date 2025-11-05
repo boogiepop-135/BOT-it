@@ -13,9 +13,7 @@ export const run = async (message: Message, args: string[] = null, userI18n: Use
                 `⏸️ *Bot en Pausa*\n\n` +
                 `El bot está actualmente pausado.\n\n` +
                 `💡 Solo los administradores pueden reanudar el bot desde el panel de administración.\n\n` +
-                `📧 Si necesitas ayuda urgente, contacta al equipo IT:\n` +
-                `sistemasit@sancosmeorg.com\n` +
-                `+52 442 282 3539`
+                `📧 Si necesitas ayuda urgente, contacta directamente a Levi Villarreal por este mismo WhatsApp.`
             );
         } else {
             await message.reply(

@@ -1,7 +1,7 @@
 {
     "name": "whatsbot-it",
     "version": "1.0.0",
-    "description": "WhatsBot IT - Agente de Ventas Inteligente para WhatsApp",
+    "description": "Levi Assistant - Asistente Personal para Clientes Freelancer",
     "main": "build/index.js",
     "dependencies": {
         "@ffmpeg-installer/ffmpeg": "^1.1.0",
@@ -55,24 +55,24 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/sancosmeit/whatsbot-it.git"
+        "url": "git+https://github.com/boogiepop-135/BOT-it.git"
     },
     "keywords": [
-        "WhatsBot IT",
-        "San Cosme IT",
+        "Levi Assistant",
         "WhatsApp",
         "Chatbot",
         "Gemini",
         "AI",
-        "Agente de Ventas",
-        "Ventas Inteligentes"
+        "Asistente Personal",
+        "Freelancer",
+        "Full Stack Developer"
     ],
-    "author": "San Cosme IT",
+    "author": "Levi Villarreal",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/sancosmeit/whatsbot-it/issues"
+        "url": "https://github.com/boogiepop-135/BOT-it/issues"
     },
-    "homepage": "https://github.com/sancosmeit/whatsbot-it#readme",
+    "homepage": "https://github.com/boogiepop-135/BOT-it#readme",
     "engines": {
         "node": "18.x"
     },

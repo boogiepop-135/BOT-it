@@ -7,7 +7,7 @@ export const run = async (message: Message, args: string[] = null, userI18n: Use
 
     const meme = await axios(AppConfig.instance.getMemeApiUrl()).then((res) => res.data);
     if (!meme || !meme.url) {
-        message.reply("> San Cosme IT 🤖 No se encontró meme");
+        message.reply("> Levi Assistant 💻 No se encontró meme");
     }
 
     message.reply(

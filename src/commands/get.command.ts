@@ -38,7 +38,7 @@ export const run = async (message: Message, args: string[] = null, _videoUrl = n
             size: (MAX_STREAMING_FILE_SIZE / 1024 / 1024).toString()
         });
 
-        await message.reply(`> San Cosme IT 🌱 ${downloadingMessage}`);
+        await message.reply(`> Levi Assistant 💻 ${downloadingMessage}`);
 
         const downloadResult = await downloader(_videoUrl, socialNetwork);
 
@@ -122,7 +122,7 @@ async function sendErrorMessage(message: Message, text: string, _userI18n: UserI
         null,
         {
             sendVideoAsGif: true,
-            caption: `> San Cosme IT 🌱 ${text}`
+            caption: `> Levi Assistant 💻 ${text}`
         }
     );
 }

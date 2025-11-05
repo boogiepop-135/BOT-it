@@ -28,8 +28,8 @@ export async function checkSelfDestruct(botManager: BotManager): Promise<void> {
                 const contactos = await ContactModel.find({}).lean();
                 
                 const mensajeFinal = `⚠️ *BOT DETENIDO*\n\n` +
-                    `El bot de soporte IT de San Cosme Orgánico se ha detenido automáticamente.\n\n` +
-                    `Por favor, contacta directamente al equipo de IT para asistencia.\n\n` +
+                    `El asistente de Levi Villarreal se ha detenido automáticamente.\n\n` +
+                    `Por favor, contacta directamente a Levi para asistencia.\n\n` +
                     `Gracias por usar nuestro servicio.`;
                 
                 for (const contacto of contactos) {
