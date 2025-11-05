@@ -37,3 +37,4 @@ const SelfDestructSchema = new mongoose.Schema<SelfDestructDocument>(
 
 export const SelfDestructModel = mongoose.model<SelfDestructDocument>('SelfDestruct', SelfDestructSchema);
 
+

@@ -47,26 +47,6 @@ export const TRANSLATIONS = {
                 description: "Obtener el clima para una ciudad",
                 example: "meteo Ciudad de México"
             },
-            productos: {
-                description: "Información completa del compostero fermentador",
-                example: "productos"
-            },
-            precios: {
-                description: "Precios y métodos de pago",
-                example: "precios"
-            },
-            pago: {
-                description: "Métodos de pago disponibles",
-                example: "pago"
-            },
-            contacto: {
-                description: "Información de contacto",
-                example: "contacto"
-            },
-            guia: {
-                description: "Guía de uso del compostero",
-                example: "guia"
-            },
             estadisticas: {
                 description: "Estadísticas de ventas y leads",
                 example: "estadisticas"

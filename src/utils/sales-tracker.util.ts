@@ -108,7 +108,7 @@ class SalesTracker {
         if (lowerMessage.includes('precio') || lowerMessage.includes('cuesta') || lowerMessage.includes('vale')) {
             return 'price';
         }
-        if (lowerMessage.includes('producto') || lowerMessage.includes('compostero') || lowerMessage.includes('kit')) {
+        if (lowerMessage.includes('producto') || lowerMessage.includes('kit')) {
             return 'product';
         }
         if (lowerMessage.includes('pago') || lowerMessage.includes('comprar') || lowerMessage.includes('transferencia')) {

@@ -1,13 +1,13 @@
-# 🤖 WhatsBot IT - Agente de Ventas Inteligente para WhatsApp
+# 🤖 WhatsBot IT - Bot de Soporte IT para WhatsApp
 
-WhatsBot IT es un agente de ventas experto especializado en WhatsApp que utiliza la API de Gemini de Google para ayudar a las personas con sus consultas. Nuestro asistente virtual proporciona información experta sobre productos, maneja objeciones y guía a los clientes hasta cerrar la venta.
+WhatsBot IT es un bot especializado en soporte técnico para WhatsApp que utiliza inteligencia artificial para ayudar a los usuarios con problemas de IT. El bot proporciona soporte técnico, gestión de tickets, proyectos y asistencia en general.
 
 ## ✨ Características Principales
 
-- **🤖 Agente de Ventas Experto**: Agente de ventas especializado
-- **🤖 Inteligencia Artificial Avanzada**: Utiliza Gemini AI para respuestas contextuales y orientadas a ventas
-- **📱 Comandos Especializados**: Comandos específicos para productos, precios, guías y métodos de pago
-- **🎯 Seguimiento de Leads**: Sistema de puntuación y seguimiento de clientes potenciales
+- **🤖 Bot de Soporte IT**: Bot especializado en soporte técnico
+- **🤖 Inteligencia Artificial Avanzada**: Utiliza Gemini AI y Claude para respuestas contextuales
+- **📱 Comandos Especializados**: Comandos específicos para tickets, proyectos, horarios y más
+- **🎯 Gestión de Tickets**: Sistema completo de gestión de tickets de soporte
 - **🗣️ Comandos de Voz**: Procesamiento de audio con speech-to-text
 - **🔊 Respuestas de Voz**: Text-to-speech para respuestas en audio
 - **🌍 Multilingüe**: Soporte completo para múltiples idiomas
@@ -73,23 +73,21 @@ npm run dev
 npm start
 ```
 
-## 📱 Comandos del Agente de Ventas
+## 📱 Comandos del Bot de Soporte IT
 
-### Comandos Especializados en Ventas
+### Comandos de Soporte IT
 
 | Comando | Descripción | Ejemplo |
 |---------|-------------|---------|
-| `/productos` | Información completa del compostero fermentador 15L | `/productos` |
-| `/precios` | Precios, métodos de pago y garantías | `/precios` |
-| `/guia` | Guía completa de uso del compostero | `/guia` |
-| `/contacto` | Información de contacto y canales de atención | `/contacto` |
-| `/pago` | Métodos de pago detallados | `/pago` |
+| `/ticket` | Gestión de tickets de soporte | `/ticket create pos El POS no imprime` |
+| `/proyectos` | Ver proyectos IT | `/proyectos` |
+| `/horarios` | Ver horarios | `/horarios` |
 
 ### Comandos Generales
 
 | Comando | Descripción | Ejemplo |
 |---------|-------------|---------|
-| `/chat [mensaje]` | Chatea con el agente de ventas | `/chat ¿Cuánto cuesta el compostero?` |
+| `/chat [mensaje]` | Chatea con el asistente de IT | `/chat La impresora no funciona` |
 | `/help` | Muestra todos los comandos disponibles | `/help` |
 | `/ping` | Verifica si WhatsBot IT está funcionando | `/ping` |
 
@@ -97,30 +95,25 @@ npm start
 
 | Comando | Descripción | Ejemplo |
 |---------|-------------|---------|
-| `/estadisticas` | Estadísticas de ventas y leads | `/estadisticas` |
+| `/admin` | Panel de administración | `/admin` |
 
-## 🎯 Características del Agente de Ventas
+## 🎯 Características del Bot de Soporte IT
 
-### Conocimiento Especializado
-- Agente de ventas especializado
-- Información detallada de productos
-- Gestión de consultas y objeciones
-- Seguimiento de leads y conversiones
+### Soporte Técnico
+- Gestión completa de tickets de soporte
+- Asistencia con problemas técnicos
+- Seguimiento de incidencias
+- Resolución de problemas comunes
 
-### Manejo de Objeciones
-- Gestión inteligente de objeciones
-- Respuestas contextuales y personalizadas
-- Seguimiento de interacciones
+### Gestión de Proyectos
+- Visualización de proyectos IT
+- Seguimiento de tareas
+- Gestión de horarios
 
-### Métodos de Pago
-- Información detallada de métodos de pago
-- Integración con sistemas de pago
-
-### Seguimiento de Leads
-- Sistema de puntuación automática
-- Detección de intenciones de compra
-- Estadísticas de conversión
-- Seguimiento de interacciones
+### Respuestas Inteligentes
+- Respuestas contextuales usando IA
+- Sugerencias proactivas de soluciones
+- Guía paso a paso para resolver problemas
 
 ## 🔧 APIs Opcionales
 
@@ -173,11 +166,10 @@ Error comunicándose con WhatsBot IT
 ## 📊 Monitoreo y Logs
 
 WhatsBot IT genera logs detallados para:
-- Interacciones de ventas
-- Puntuación de leads
-- Objeciones manejadas
-- Conversiones realizadas
+- Interacciones de soporte
+- Tickets creados y resueltos
 - Errores de API
+- Problemas técnicos reportados
 
 ## 🔒 Seguridad
 
@@ -210,4 +202,4 @@ MIT License - Ver archivo LICENSE para más detalles.
 
 ---
 
-**WhatsBot IT** - *Agente de ventas inteligente de San Cosme IT* 🤖✨
+**WhatsBot IT** - *Bot de soporte IT de San Cosme Orgánico* 🤖✨

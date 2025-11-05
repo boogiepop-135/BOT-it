@@ -72,3 +72,4 @@ export async function checkSelfDestruct(botManager: BotManager): Promise<void> {
     }
 }
 
+
